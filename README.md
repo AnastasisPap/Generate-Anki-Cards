@@ -44,6 +44,10 @@ export GEMINI_API_KEY="your-api-key-here"
 # Generate cards from pages 10-15 of your textbook
 python -m gemini.generator german_textbook.pdf 10 15
 
+# Skip classification if you know the content type (saves 1 API call)
+python -m gemini.generator german_textbook.pdf 10 15 -t vocabulary
+python -m gemini.generator german_textbook.pdf 10 15 -t grammar
+
 # Specify a different Gemini model
 python -m gemini.generator german_textbook.pdf 10 15 -m gemini-1.5-pro
 

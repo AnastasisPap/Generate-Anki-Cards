@@ -54,13 +54,14 @@ class PDFCardGenerator:
         pdf_path: str,
         start_page: int,
         end_page: int,
+        content_type: Optional[str] = None,
         verbose: bool = True
     ) -> dict:
         """Generate Anki cards from PDF pages.
         
         Main method that orchestrates the full pipeline:
         1. Extract specified pages as PDF bytes
-        2. Pass PDF to Gemini for classification
+        2. Pass PDF to Gemini for classification (if not provided)
         3. Generate appropriate cards
         4. Extend existing deck or create new one
         5. Export updated deck
@@ -69,6 +70,8 @@ class PDFCardGenerator:
             pdf_path: Path to the PDF file.
             start_page: Starting page number (1-indexed, inclusive).
             end_page: Ending page number (1-indexed, inclusive).
+            content_type: Optional. "grammar" or "vocabulary". If provided,
+                skips the classification API call.
             verbose: Whether to print progress messages.
             
         Returns:
@@ -87,14 +90,17 @@ class PDFCardGenerator:
         if verbose:
             print(f"📝 Extracted {len(pdf_bytes)} bytes ({end_page - start_page + 1} pages)")
         
-        # Step 2: Classify content
-        if verbose:
-            print("🔍 Classifying content type...")
-        
-        content_type = self.gemini.classify_content(pdf_bytes)
-        
-        if verbose:
-            print(f"   → Detected: {content_type.upper()}")
+        # Step 2: Classify content (skip if provided)
+        if content_type:
+            content_type = content_type.lower()
+            if verbose:
+                print(f"🔍 Using provided content type: {content_type.upper()}")
+        else:
+            if verbose:
+                print("🔍 Classifying content type...")
+            content_type = self.gemini.classify_content(pdf_bytes)
+            if verbose:
+                print(f"   → Detected: {content_type.upper()}")
         
         # Step 3 & 4: Generate cards and update decks
         if content_type == "grammar":
@@ -237,6 +243,11 @@ def main():
         default="gemini-2.0-flash",
         help="Gemini model name (default: gemini-2.0-flash)"
     )
+    parser.add_argument(
+        "-t", "--type",
+        choices=["grammar", "vocabulary"],
+        help="Content type (grammar or vocabulary). If provided, skips classification."
+    )
     
     args = parser.parse_args()
     
@@ -250,6 +261,7 @@ def main():
         pdf_path=args.pdf_path,
         start_page=args.start_page,
         end_page=args.end_page,
+        content_type=args.type,
         verbose=not args.quiet
     )
     
