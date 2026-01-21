@@ -105,7 +105,7 @@ gen.export("german_learning_deck.apkg")
 
 ## Deck Structure
 
-```
+```text
 German
 ├── Vocabulary
 │   ├── Body Parts
@@ -126,7 +126,7 @@ German
 
 ## Files
 
-```
+```text
 GenerateAnki/
 ├── anki_generator/          # Core Anki deck creation
 │   ├── api.py              # Main AnkiGenerator class
