@@ -32,6 +32,7 @@ class PDFCardGenerator:
     def __init__(
         self,
         api_key: Optional[str] = None,
+        model: str = "gemini-2.0-flash",
         output_file: str = "german_learning_deck.apkg",
         registry_path: str = "deck_registry.json"
     ):
@@ -39,11 +40,12 @@ class PDFCardGenerator:
         
         Args:
             api_key: Gemini API key. If None, reads from GEMINI_API_KEY env var.
+            model: Gemini model name. Defaults to gemini-2.0-flash.
             output_file: Path to the output .apkg file.
             registry_path: Path to the deck registry JSON file.
         """
         self.output_file = output_file
-        self.gemini = GeminiClient(api_key=api_key)
+        self.gemini = GeminiClient(api_key=api_key, model=model)
         self.registry = DeckRegistry(registry_path=registry_path)
         self.anki = AnkiGenerator(GERMAN)
     
@@ -236,10 +238,16 @@ def main():
         action="store_true",
         help="Suppress progress messages"
     )
+    parser.add_argument(
+        "-m", "--model",
+        default="gemini-2.0-flash",
+        help="Gemini model name (default: gemini-2.0-flash)"
+    )
     
     args = parser.parse_args()
     
     generator = PDFCardGenerator(
+        model=args.model,
         output_file=args.output,
         registry_path=args.registry
     )

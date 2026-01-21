@@ -32,21 +32,27 @@ pip install -r requirements.txt
 Generate Anki cards automatically from your German textbook PDF.
 
 **Setup:**
+
 ```bash
 # Set your Gemini API key
 export GEMINI_API_KEY="your-api-key-here"
 ```
 
 **Command Line:**
+
 ```bash
 # Generate cards from pages 10-15 of your textbook
 python -m gemini.generator german_textbook.pdf 10 15
+
+# Specify a different Gemini model
+python -m gemini.generator german_textbook.pdf 10 15 -m gemini-1.5-pro
 
 # Specify custom output file
 python -m gemini.generator german_textbook.pdf 10 15 -o my_deck.apkg
 ```
 
 **Python API:**
+
 ```python
 from gemini import PDFCardGenerator
 
@@ -110,7 +116,7 @@ German
 2. **Content Classification**: Gemini determines if it's grammar or vocabulary content
 3. **Category Detection**: For vocabulary, detects the topic (e.g., "Body Parts")
 4. **Card Generation**: Creates appropriate flashcards with translations and example sentences
-5. **Deck Management**: 
+5. **Deck Management**:
    - Grammar → Extends the single Grammar deck
    - Vocabulary → Extends existing category or creates new one
 
@@ -153,6 +159,7 @@ source ~/.zshrc
 ### Deck Registry
 
 The file `deck_registry.json` tracks created vocabulary categories. This ensures:
+
 - New cards for "Body Parts" extend the existing deck
 - Case-insensitive matching ("body parts" → "Body Parts")
 
@@ -180,6 +187,7 @@ gen = AnkiGenerator(SPANISH)
 4. Cards will appear under `German::Vocabulary::` or `German::Grammar`
 
 ## Code
+
 Claude was used to generate most of this code.
 
 ## License
