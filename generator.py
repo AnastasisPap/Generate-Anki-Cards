@@ -30,7 +30,8 @@ class CardGenerator:
         api_key: Optional[str] = None,
         model: str = "gemini-2.0-flash",
         output_file: str = "german_learning_deck.apkg",
-        registry_path: str = "deck_registry.json"
+        registry_path: str = "deck_registry.json",
+        custom_prompt: Optional[str] = None
     ):
         """Initialize the card generator.
         
@@ -40,10 +41,12 @@ class CardGenerator:
             model: Gemini model name. Defaults to gemini-2.0-flash.
             output_file: Path to the output .apkg file.
             registry_path: Path to the deck registry JSON file.
+            custom_prompt: Optional additional instructions to pass to Gemini.
         """
         self.output_file = output_file
         self.model = model
         self.api_key = api_key
+        self.custom_prompt = custom_prompt
         self.registry = DeckRegistry(registry_path=registry_path)
         self.anki = AnkiGenerator(GERMAN)
         self._gemini: Optional[GeminiClient] = None
@@ -453,7 +456,7 @@ class CardGenerator:
         if verbose:
             print("📚 Generating grammar cards...")
         
-        cards = self.gemini.generate_grammar_cards(pdf_bytes)
+        cards = self.gemini.generate_grammar_cards(pdf_bytes, custom_prompt=self.custom_prompt)
         
         if verbose:
             print(f"   → Generated {len(cards)} grammar cards")
@@ -496,7 +499,11 @@ class CardGenerator:
         existing_categories = self.registry.get_vocabulary_categories()
         
         # Single API call to get categories and cards together
-        category_data = self.gemini.generate_vocabulary_cards(pdf_bytes, existing_categories)
+        category_data = self.gemini.generate_vocabulary_cards(
+            pdf_bytes, 
+            existing_categories,
+            custom_prompt=self.custom_prompt
+        )
         
         total_cards = sum(len(cards) for _, cards in category_data)
         if verbose:
@@ -613,6 +620,11 @@ def main():
         action="store_true",
         help="Suppress progress messages"
     )
+    parser.add_argument(
+        "--prompt",
+        type=str,
+        help="Additional instructions to pass to Gemini (e.g., 'Focus on verbs only')"
+    )
     
     args = parser.parse_args()
     
@@ -624,7 +636,8 @@ def main():
     generator = CardGenerator(
         model=args.model,
         output_file=args.output,
-        registry_path=args.registry
+        registry_path=args.registry,
+        custom_prompt=args.prompt
     )
     
     if args.json:

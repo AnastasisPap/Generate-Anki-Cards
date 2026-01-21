@@ -97,20 +97,25 @@ class GeminiClient:
             return "grammar"
         return "vocabulary"
     
-    def generate_grammar_cards(self, pdf_bytes: bytes) -> List[Dict]:
+    def generate_grammar_cards(self, pdf_bytes: bytes, custom_prompt: Optional[str] = None) -> List[Dict]:
         """Generate grammar card Q&A pairs from PDF.
         
         Args:
             pdf_bytes: The PDF pages as bytes.
+            custom_prompt: Optional additional instructions to append to the prompt.
             
         Returns:
             List of dicts with 'question' and 'answer' keys.
         """
+        prompt = GRAMMAR_CARD_PROMPT
+        if custom_prompt:
+            prompt = f"{prompt}\n\nAdditional instructions: {custom_prompt}"
+        
         response = self.client.models.generate_content(
             model=self.model,
             contents=[
                 types.Part.from_bytes(data=pdf_bytes, mime_type='application/pdf'),
-                GRAMMAR_CARD_PROMPT
+                prompt
             ]
         )
         
@@ -120,7 +125,8 @@ class GeminiClient:
     def generate_vocabulary_cards(
         self, 
         pdf_bytes: bytes, 
-        existing_categories: List[str] = None
+        existing_categories: List[str] = None,
+        custom_prompt: Optional[str] = None
     ) -> List[Tuple[str, List[Dict]]]:
         """Generate vocabulary cards from PDF, including category detection.
         
@@ -131,6 +137,7 @@ class GeminiClient:
             pdf_bytes: The PDF pages as bytes.
             existing_categories: List of existing category names. If provided,
                 Gemini will prefer matching one of these.
+            custom_prompt: Optional additional instructions to append to the prompt.
             
         Returns:
             A list of tuples, each containing (category_name, cards) where:
@@ -139,6 +146,9 @@ class GeminiClient:
                      'sentence', and 'sentence_translation' keys.
         """
         prompt = get_vocabulary_cards_prompt(existing_categories or [])
+        if custom_prompt:
+            prompt = f"{prompt}\n\nAdditional instructions: {custom_prompt}"
+        
         response = self.client.models.generate_content(
             model=self.model,
             contents=[
