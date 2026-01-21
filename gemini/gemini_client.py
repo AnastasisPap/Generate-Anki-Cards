@@ -121,10 +121,11 @@ class GeminiClient:
         self, 
         pdf_bytes: bytes, 
         existing_categories: List[str] = None
-    ) -> Tuple[str, List[Dict]]:
+    ) -> List[Tuple[str, List[Dict]]]:
         """Generate vocabulary cards from PDF, including category detection.
         
         This combines category detection and card generation into a single API call.
+        Supports PDFs with multiple vocabulary categories.
         
         Args:
             pdf_bytes: The PDF pages as bytes.
@@ -132,7 +133,7 @@ class GeminiClient:
                 Gemini will prefer matching one of these.
             
         Returns:
-            A tuple of (category_name, cards) where:
+            A list of tuples, each containing (category_name, cards) where:
             - category_name: The detected/matched category (e.g., "Body Parts")
             - cards: List of dicts with 'word', 'word_translation', 
                      'sentence', and 'sentence_translation' keys.
@@ -147,7 +148,18 @@ class GeminiClient:
         )
         
         data = self._extract_json(response.text)
+        
+        # Handle new multi-category format
+        if "categories" in data:
+            result = []
+            for cat_data in data["categories"]:
+                category = cat_data.get("category", "Vocabulary")
+                cards = cat_data.get("cards", [])
+                result.append((category, cards))
+            return result
+        
+        # Fallback for legacy single-category format
         category = data.get("category", "Vocabulary")
         cards = data.get("cards", [])
-        
-        return category, cards
+        return [(category, cards)]
+

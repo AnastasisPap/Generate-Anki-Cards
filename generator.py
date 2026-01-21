@@ -478,14 +478,16 @@ class CardGenerator:
         }
     
     def _handle_vocabulary(self, pdf_bytes: bytes, verbose: bool) -> dict:
-        """Handle vocabulary content: detect category and generate cards in one call.
+        """Handle vocabulary content: detect categories and generate cards in one call.
+        
+        Supports PDFs with multiple vocabulary categories.
         
         Args:
             pdf_bytes: The PDF pages as bytes.
             verbose: Whether to print progress messages.
             
         Returns:
-            Summary dict with content_type, category, cards_generated, deck_action.
+            Summary dict with content_type, categories, cards_generated, deck_actions.
         """
         if verbose:
             print("📚 Generating vocabulary cards...")
@@ -493,52 +495,62 @@ class CardGenerator:
         # Get existing categories so Gemini can match them
         existing_categories = self.registry.get_vocabulary_categories()
         
-        # Single API call to get category and cards together
-        category, cards = self.gemini.generate_vocabulary_cards(pdf_bytes, existing_categories)
+        # Single API call to get categories and cards together
+        category_data = self.gemini.generate_vocabulary_cards(pdf_bytes, existing_categories)
         
+        total_cards = sum(len(cards) for _, cards in category_data)
         if verbose:
-            print(f"   → Category: {category}")
-            print(f"   → Generated {len(cards)} vocabulary cards")
+            print(f"   → Found {len(category_data)} category(ies)")
+            for category, cards in category_data:
+                print(f"     • {category}: {len(cards)} cards")
         
-        # Check if category exists (Gemini should match, but do case-insensitive check)
-        existing_category = self.registry.find_matching_category(category)
+        categories_processed = []
+        deck_actions = {}
+        total_cards_added = 0
         
-        if existing_category:
-            deck_action = "extended"
-            chapter_name = existing_category
-            if verbose:
-                print(f"   → Extending existing deck: {existing_category}")
-        else:
-            deck_action = "created"
-            chapter_name = category
-            if verbose:
-                print(f"   → Creating new deck: {category}")
-        
-        # Ensure chapter deck exists
-        self.anki.create_vocabulary_chapter(chapter_name)
-        
-        # Ask if user wants to inspect cards before adding
-        if cards and self._ask_inspect_cards():
-            cards = self._inspect_cards_interactively(cards, "vocabulary")
-        
-        # Add cards
-        for card in cards:
-            self.anki.add_vocabulary_card(
-                chapter=chapter_name,
-                word=card["word"],
-                word_translation=card["word_translation"],
-                sentence=card["sentence"],
-                sentence_translation=card["sentence_translation"]
-            )
-        
-        # Register the category
-        self.registry.register_vocabulary_category(chapter_name)
+        for category, cards in category_data:
+            # Check if category exists (Gemini should match, but do case-insensitive check)
+            existing_category = self.registry.find_matching_category(category)
+            
+            if existing_category:
+                deck_action = "extended"
+                chapter_name = existing_category
+                if verbose:
+                    print(f"   → Extending existing deck: {existing_category}")
+            else:
+                deck_action = "created"
+                chapter_name = category
+                if verbose:
+                    print(f"   → Creating new deck: {category}")
+            
+            # Ensure chapter deck exists
+            self.anki.create_vocabulary_chapter(chapter_name)
+            
+            # Ask if user wants to inspect cards before adding (once per category)
+            if cards and self._ask_inspect_cards():
+                cards = self._inspect_cards_interactively(cards, "vocabulary")
+            
+            # Add cards
+            for card in cards:
+                self.anki.add_vocabulary_card(
+                    chapter=chapter_name,
+                    word=card["word"],
+                    word_translation=card["word_translation"],
+                    sentence=card["sentence"],
+                    sentence_translation=card["sentence_translation"]
+                )
+            
+            # Register the category
+            self.registry.register_vocabulary_category(chapter_name)
+            categories_processed.append(chapter_name)
+            deck_actions[chapter_name] = deck_action
+            total_cards_added += len(cards)
         
         return {
             "content_type": "vocabulary",
-            "category": chapter_name,
-            "cards_generated": len(cards),
-            "deck_action": deck_action
+            "categories": categories_processed,
+            "cards_generated": total_cards_added,
+            "deck_actions": deck_actions
         }
 
 
@@ -641,10 +653,16 @@ def main():
         
         print(f"\nSummary:")
         print(f"  Content type: {result['content_type']}")
-        if result['category']:
+        if result.get('categories'):
+            print(f"  Categories: {', '.join(result['categories'])}")
+        elif result.get('category'):
+            # Legacy single category support
             print(f"  Category: {result['category']}")
         print(f"  Cards generated: {result['cards_generated']}")
-        if 'deck_action' in result:
+        if 'deck_actions' in result:
+            for cat, action in result['deck_actions'].items():
+                print(f"  Deck '{cat}': {action}")
+        elif 'deck_action' in result:
             print(f"  Deck action: {result['deck_action']}")
 
 

@@ -40,10 +40,11 @@ Respond with ONLY the JSON object, no additional text."""
 
 VOCABULARY_CARDS_PROMPT_TEMPLATE = """You are creating Anki flashcards from German vocabulary content.
 
-First, determine the vocabulary category/topic being taught in this PDF.
+Analyze the PDF and identify all vocabulary categories/topics being taught.
+Some PDFs may contain vocabulary from multiple different categories (e.g., both "Body Parts" and "Clothing" on the same pages).
 {existing_categories_section}
 
-Then, extract all vocabulary words with example sentences.
+For each category found, extract all vocabulary words with example sentences.
 For each word, provide:
 - The German word
 - The English translation
@@ -52,17 +53,22 @@ For each word, provide:
 
 Generate your response in the following JSON format:
 {{
-    "category": "The vocabulary category (2-4 words, Title Case)",
-    "cards": [
+    "categories": [
         {{
-            "word": "German word",
-            "word_translation": "English translation",
-            "sentence": "German sentence using the word",
-            "sentence_translation": "English translation of the sentence"
+            "category": "The vocabulary category (2-4 words, Title Case)",
+            "cards": [
+                {{
+                    "word": "German word",
+                    "word_translation": "English translation",
+                    "sentence": "German sentence using the word",
+                    "sentence_translation": "English translation of the sentence"
+                }}
+            ]
         }}
     ]
 }}
 
+Group words by their appropriate category. If all words belong to one category, return a single category object.
 Extract all vocabulary words from the PDF. Create natural, useful example sentences.
 Respond with ONLY the JSON object, no additional text."""
 
