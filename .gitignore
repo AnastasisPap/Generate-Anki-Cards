@@ -1,1 +1,3 @@
-__pycache__
+__pycache__/
+deck_registry.json
+*.apkg

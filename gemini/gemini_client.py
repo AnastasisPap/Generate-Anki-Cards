@@ -55,7 +55,13 @@ class GeminiClient:
             
         Returns:
             Parsed JSON dictionary.
+        
+        Raises:
+            ValueError: If text is None or empty.
         """
+        if not text:
+            raise ValueError("Gemini returned empty response. The model may have failed to process the PDF.")
+        
         # Try to find JSON in code blocks first
         code_block_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', text)
         if code_block_match:
