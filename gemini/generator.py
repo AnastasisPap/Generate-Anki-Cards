@@ -147,7 +147,7 @@ class PDFCardGenerator:
         }
     
     def _handle_vocabulary(self, pdf_bytes: bytes, verbose: bool) -> dict:
-        """Handle vocabulary content: detect category, generate cards, manage deck.
+        """Handle vocabulary content: detect category and generate cards in one call.
         
         Args:
             pdf_bytes: The PDF pages as bytes.
@@ -157,14 +157,17 @@ class PDFCardGenerator:
             Summary dict with content_type, category, cards_generated, deck_action.
         """
         if verbose:
-            print("🏷️  Detecting vocabulary category...")
+            print("📚 Generating vocabulary cards...")
         
         # Get existing categories so Gemini can match them
         existing_categories = self.registry.get_vocabulary_categories()
-        category = self.gemini.extract_vocabulary_category(pdf_bytes, existing_categories)
+        
+        # Single API call to get category and cards together
+        category, cards = self.gemini.generate_vocabulary_cards(pdf_bytes, existing_categories)
         
         if verbose:
             print(f"   → Category: {category}")
+            print(f"   → Generated {len(cards)} vocabulary cards")
         
         # Check if category exists (Gemini should match, but do case-insensitive check)
         existing_category = self.registry.find_matching_category(category)
@@ -179,15 +182,6 @@ class PDFCardGenerator:
             chapter_name = category
             if verbose:
                 print(f"   → Creating new deck: {category}")
-        
-        # Generate vocabulary cards
-        if verbose:
-            print("📚 Generating vocabulary cards...")
-        
-        cards = self.gemini.generate_vocabulary_cards(pdf_bytes)
-        
-        if verbose:
-            print(f"   → Generated {len(cards)} vocabulary cards")
         
         # Ensure chapter deck exists
         self.anki.create_vocabulary_chapter(chapter_name)

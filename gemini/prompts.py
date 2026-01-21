@@ -14,37 +14,6 @@ Analyze the PDF content and determine if it is primarily:
 Respond with ONLY one word: either "grammar" or "vocabulary"."""
 
 
-VOCABULARY_CATEGORY_PROMPT = """You are analyzing vocabulary content from a German language learning textbook.
-
-Based on the PDF content, determine the vocabulary category/topic being taught.
-
-{existing_categories_section}
-
-Respond with ONLY the category name as a short phrase (2-4 words maximum). Use Title Case.
-For example: "Body Parts" or "Kitchen Items" or "Daily Routines"."""
-
-
-def get_vocabulary_category_prompt(existing_categories: list) -> str:
-    """Generate the vocabulary category prompt with existing categories.
-    
-    Args:
-        existing_categories: List of existing category names.
-        
-    Returns:
-        The formatted prompt string.
-    """
-    if existing_categories:
-        categories_list = ", ".join(f'"{cat}"' for cat in existing_categories)
-        section = f"""Existing categories: {categories_list}
-
-If the content matches one of these existing categories, use that exact category name.
-Otherwise, create a new appropriate category name."""
-    else:
-        section = "Examples of categories: \"Body Parts\", \"Food and Drinks\", \"Clothing\", \"Family Members\", \"Colors\", \"Animals\", \"Transportation\", \"Weather\", \"Professions\", etc."
-    
-    return VOCABULARY_CATEGORY_PROMPT.format(existing_categories_section=section)
-
-
 GRAMMAR_CARD_PROMPT = """You are creating Anki flashcards from German grammar content.
 
 Analyze the PDF content and create question-answer flashcard pairs.
@@ -69,26 +38,51 @@ Create between 5-15 cards depending on the content density. Make questions speci
 Respond with ONLY the JSON object, no additional text."""
 
 
-VOCABULARY_CARD_PROMPT = """You are creating Anki flashcards from German vocabulary content.
+VOCABULARY_CARDS_PROMPT_TEMPLATE = """You are creating Anki flashcards from German vocabulary content.
 
-Analyze the PDF content and extract word pairs with example sentences.
+First, determine the vocabulary category/topic being taught in this PDF.
+{existing_categories_section}
+
+Then, extract all vocabulary words with example sentences.
 For each word, provide:
 - The German word
 - The English translation
 - A German example sentence using the word
 - The English translation of the sentence
 
-Generate flashcards in the following JSON format:
-{
+Generate your response in the following JSON format:
+{{
+    "category": "The vocabulary category (2-4 words, Title Case)",
     "cards": [
-        {
+        {{
             "word": "German word",
             "word_translation": "English translation",
             "sentence": "German sentence using the word",
             "sentence_translation": "English translation of the sentence"
-        }
+        }}
     ]
-}
+}}
 
 Extract all vocabulary words from the PDF. Create natural, useful example sentences.
 Respond with ONLY the JSON object, no additional text."""
+
+
+def get_vocabulary_cards_prompt(existing_categories: list) -> str:
+    """Generate the vocabulary cards prompt with existing categories.
+    
+    Args:
+        existing_categories: List of existing category names.
+        
+    Returns:
+        The formatted prompt string.
+    """
+    if existing_categories:
+        categories_list = ", ".join(f'"{cat}"' for cat in existing_categories)
+        section = f"""Existing categories: {categories_list}
+
+If the content matches one of these existing categories, use that exact category name.
+Otherwise, create a new appropriate category name."""
+    else:
+        section = """Examples of categories: "Body Parts", "Food and Drinks", "Clothing", "Family Members", "Colors", "Animals", "Transportation", "Weather", "Professions", etc."""
+    
+    return VOCABULARY_CARDS_PROMPT_TEMPLATE.format(existing_categories_section=section)

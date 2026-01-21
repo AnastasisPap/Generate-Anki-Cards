@@ -7,16 +7,15 @@ Uses PDF bytes directly instead of extracted text for better comprehension.
 import json
 import os
 import re
-from typing import Literal, Optional, List, Dict
+from typing import Literal, Optional, List, Dict, Tuple
 
 from google import genai
 from google.genai import types
 
 from .prompts import (
     CLASSIFICATION_PROMPT,
-    get_vocabulary_category_prompt,
     GRAMMAR_CARD_PROMPT,
-    VOCABULARY_CARD_PROMPT,
+    get_vocabulary_cards_prompt,
 )
 
 
@@ -98,27 +97,6 @@ class GeminiClient:
             return "grammar"
         return "vocabulary"
     
-    def extract_vocabulary_category(self, pdf_bytes: bytes, existing_categories: List[str] = None) -> str:
-        """Extract the vocabulary topic/category from PDF.
-        
-        Args:
-            pdf_bytes: The PDF pages as bytes.
-            existing_categories: List of existing category names. If provided,
-                Gemini will prefer matching one of these.
-            
-        Returns:
-            The detected category name (e.g., "Body Parts", "Food and Drinks").
-        """
-        prompt = get_vocabulary_category_prompt(existing_categories or [])
-        response = self.client.models.generate_content(
-            model=self.model,
-            contents=[
-                types.Part.from_bytes(data=pdf_bytes, mime_type='application/pdf'),
-                prompt
-            ]
-        )
-        return response.text.strip()
-    
     def generate_grammar_cards(self, pdf_bytes: bytes) -> List[Dict]:
         """Generate grammar card Q&A pairs from PDF.
         
@@ -139,23 +117,37 @@ class GeminiClient:
         data = self._extract_json(response.text)
         return data.get("cards", [])
     
-    def generate_vocabulary_cards(self, pdf_bytes: bytes) -> List[Dict]:
-        """Generate vocabulary cards from PDF.
+    def generate_vocabulary_cards(
+        self, 
+        pdf_bytes: bytes, 
+        existing_categories: List[str] = None
+    ) -> Tuple[str, List[Dict]]:
+        """Generate vocabulary cards from PDF, including category detection.
+        
+        This combines category detection and card generation into a single API call.
         
         Args:
             pdf_bytes: The PDF pages as bytes.
+            existing_categories: List of existing category names. If provided,
+                Gemini will prefer matching one of these.
             
         Returns:
-            List of dicts with 'word', 'word_translation', 
-            'sentence', and 'sentence_translation' keys.
+            A tuple of (category_name, cards) where:
+            - category_name: The detected/matched category (e.g., "Body Parts")
+            - cards: List of dicts with 'word', 'word_translation', 
+                     'sentence', and 'sentence_translation' keys.
         """
+        prompt = get_vocabulary_cards_prompt(existing_categories or [])
         response = self.client.models.generate_content(
             model=self.model,
             contents=[
                 types.Part.from_bytes(data=pdf_bytes, mime_type='application/pdf'),
-                VOCABULARY_CARD_PROMPT
+                prompt
             ]
         )
         
         data = self._extract_json(response.text)
-        return data.get("cards", [])
+        category = data.get("category", "Vocabulary")
+        cards = data.get("cards", [])
+        
+        return category, cards
