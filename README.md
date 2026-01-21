@@ -9,6 +9,7 @@ A Python tool to create Anki flashcard decks for German language learning. Suppo
 - 🤖 **AI-Powered PDF Processing**: Automatically extract cards from textbook PDFs
 - 🗂️ **Smart Deck Management**: Extends existing decks instead of creating duplicates
 - 🏷️ **Category Detection**: AI detects vocabulary topics (Body Parts, Food, etc.)
+- 💬 **Custom Instructions**: Pass additional prompts to guide AI card generation
 
 ## Installation
 
@@ -53,6 +54,10 @@ python generator.py --pdf german_textbook.pdf -s 10 -e 15 -m gemini-1.5-pro
 
 # Specify custom output file
 python generator.py --pdf german_textbook.pdf -s 10 -e 15 -o my_deck.apkg
+
+# Add custom instructions to Gemini
+python generator.py --pdf german_textbook.pdf -s 10 -e 15 --prompt "Focus only on nouns"
+python generator.py --pdf german_textbook.pdf -s 10 -e 15 --prompt "Make the example sentences shorter"
 ```
 
 **Python API:**
@@ -61,6 +66,14 @@ python generator.py --pdf german_textbook.pdf -s 10 -e 15 -o my_deck.apkg
 from generator import CardGenerator
 
 generator = CardGenerator()
+result = generator.generate_from_pdf(
+    pdf_path="german_textbook.pdf",
+    start_page=10,
+    end_page=15
+)
+
+# With custom instructions
+generator = CardGenerator(custom_prompt="Focus on verbs and include conjugations")
 result = generator.generate_from_pdf(
     pdf_path="german_textbook.pdf",
     start_page=10,
