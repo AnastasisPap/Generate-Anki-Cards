@@ -336,6 +336,45 @@ class CardGenerator:
         
         print(f"{'='*50}")
     
+    def _edit_card(self, card: Dict[str, Any], card_type: str) -> Dict[str, Any]:
+        """Let the user edit individual fields of a card.
+        
+        Args:
+            card: The card data dict to edit.
+            card_type: Either "vocabulary" or "grammar".
+            
+        Returns:
+            The edited card dict.
+        """
+        edited_card = card.copy()
+        
+        print("\n✏️  Edit mode - press Enter to keep the current value")
+        print("-" * 40)
+        
+        if card_type == "vocabulary":
+            fields = [
+                ("word", "📝 Word"),
+                ("word_translation", "🔤 Translation"),
+                ("sentence", "💬 Sentence"),
+                ("sentence_translation", "🔤 Sentence Translation")
+            ]
+        else:  # grammar
+            fields = [
+                ("question", "❓ Question"),
+                ("answer", "✅ Answer")
+            ]
+        
+        for field_key, field_label in fields:
+            current_value = edited_card.get(field_key, "")
+            new_value = input(f"{field_label} [{current_value}]: ").strip()
+            if new_value:
+                edited_card[field_key] = new_value
+        
+        print("-" * 40)
+        print("✓ Card updated!")
+        
+        return edited_card
+
     def _inspect_cards_interactively(
         self,
         cards: List[Dict[str, Any]],
@@ -354,19 +393,24 @@ class CardGenerator:
         total = len(cards)
         
         for i, card in enumerate(cards):
-            self._display_card(card, card_type, i, total)
+            current_card = card.copy()
             
             while True:
-                response = input("➕ Add this card to the deck? ([yes]/no): ").strip().lower()
+                self._display_card(current_card, card_type, i, total)
+                
+                response = input("➕ Add this card to the deck? ([yes]/no/edit): ").strip().lower()
                 if response in ("yes", "y", ""):
-                    approved_cards.append(card)
+                    approved_cards.append(current_card)
                     print("   ✓ Card will be added.")
                     break
                 elif response in ("no", "n"):
                     print("   ✗ Card skipped.")
                     break
+                elif response in ("edit", "e"):
+                    current_card = self._edit_card(current_card, card_type)
+                    # Loop continues to re-display the edited card
                 else:
-                    print("   Please enter 'yes' or 'no'.")
+                    print("   Please enter 'yes', 'no', or 'edit'.")
         
         print(f"\n📊 Summary: {len(approved_cards)}/{total} cards approved for addition.")
         return approved_cards
