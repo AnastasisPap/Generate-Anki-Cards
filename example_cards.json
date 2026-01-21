@@ -1,0 +1,35 @@
+{
+    "vocabulary": [
+        {
+            "chapter": "Body Parts",
+            "word": "der Kopf",
+            "word_translation": "head",
+            "sentence": "Mein Kopf tut weh.",
+            "sentence_translation": "My head hurts."
+        },
+        {
+            "chapter": "Body Parts",
+            "word": "die Hand",
+            "word_translation": "hand",
+            "sentence": "Ich wasche meine Hände.",
+            "sentence_translation": "I wash my hands."
+        },
+        {
+            "chapter": "Food and Drinks",
+            "word": "das Brot",
+            "word_translation": "bread",
+            "sentence": "Ich esse Brot zum Frühstück.",
+            "sentence_translation": "I eat bread for breakfast."
+        }
+    ],
+    "grammar": [
+        {
+            "question": "What is the accusative form of 'der'?",
+            "answer": "den"
+        },
+        {
+            "question": "What is the dative form of 'die' (singular)?",
+            "answer": "der"
+        }
+    ]
+}

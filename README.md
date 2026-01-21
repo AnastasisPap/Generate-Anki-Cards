@@ -27,9 +27,9 @@ pip install -r requirements.txt
 
 ## Usage
 
-### Option 1: AI-Powered PDF Generation (Recommended)
+### Option 1: AI-Powered PDF Generation
 
-Generate Anki cards automatically from your German textbook PDF.
+Generate Anki cards automatically from your German textbook PDF using Gemini AI.
 
 **Setup:**
 
@@ -42,25 +42,25 @@ export GEMINI_API_KEY="your-api-key-here"
 
 ```bash
 # Generate cards from pages 10-15 of your textbook
-python -m gemini.generator german_textbook.pdf 10 15
+python generator.py --pdf german_textbook.pdf -s 10 -e 15
 
 # Skip classification if you know the content type (saves 1 API call)
-python -m gemini.generator german_textbook.pdf 10 15 -t vocabulary
-python -m gemini.generator german_textbook.pdf 10 15 -t grammar
+python generator.py --pdf german_textbook.pdf -s 10 -e 15 -t vocabulary
+python generator.py --pdf german_textbook.pdf -s 10 -e 15 -t grammar
 
 # Specify a different Gemini model
-python -m gemini.generator german_textbook.pdf 10 15 -m gemini-1.5-pro
+python generator.py --pdf german_textbook.pdf -s 10 -e 15 -m gemini-1.5-pro
 
 # Specify custom output file
-python -m gemini.generator german_textbook.pdf 10 15 -o my_deck.apkg
+python generator.py --pdf german_textbook.pdf -s 10 -e 15 -o my_deck.apkg
 ```
 
 **Python API:**
 
 ```python
-from gemini import PDFCardGenerator
+from generator import CardGenerator
 
-generator = PDFCardGenerator()
+generator = CardGenerator()
 result = generator.generate_from_pdf(
     pdf_path="german_textbook.pdf",
     start_page=10,
@@ -71,7 +71,58 @@ print(f"Generated {result['cards_generated']} cards")
 print(f"Content type: {result['content_type']}")  # "grammar" or "vocabulary"
 ```
 
-### Option 2: Manual Card Creation
+### Option 2: JSON File Import (Recommended for Manual Cards)
+
+Add cards manually using a JSON file. This is ideal for adding custom cards or importing from other sources.
+
+**Command Line:**
+
+```bash
+# Import cards from JSON file
+python generator.py --json cards.json
+
+# Specify custom output file
+python generator.py --json cards.json -o my_deck.apkg
+```
+
+**JSON Format:**
+
+```json
+{
+  "vocabulary": [
+    {
+      "chapter": "Body Parts",
+      "word": "der Kopf",
+      "word_translation": "head",
+      "sentence": "Mein Kopf tut weh.",
+      "sentence_translation": "My head hurts."
+    }
+  ],
+  "grammar": [
+    {
+      "question": "What is the accusative form of 'der'?",
+      "answer": "den"
+    }
+  ]
+}
+```
+
+See `example_cards.json` for a complete example.
+
+**Python API:**
+
+```python
+from generator import CardGenerator
+
+generator = CardGenerator()
+result = generator.generate_from_json("cards.json")
+
+print(f"Vocabulary cards: {result['vocabulary_cards']}")
+print(f"Grammar cards: {result['grammar_cards']}")
+print(f"Categories: {result['categories']}")
+```
+
+### Option 3: Programmatic Card Creation
 
 Create cards programmatically with full control.
 
@@ -128,14 +179,16 @@ German
 
 ```text
 GenerateAnki/
+├── generator.py             # Main CLI (PDF + JSON import)
+├── example_cards.json       # Example JSON file for manual import
+│
 ├── anki_generator/          # Core Anki deck creation
-│   ├── api.py              # Main AnkiGenerator class
+│   ├── api.py              # AnkiGenerator class
 │   ├── config.py           # Language configurations
 │   ├── deck_manager.py     # Deck creation and management
 │   └── models.py           # Card templates and styling
 │
 ├── gemini/                  # AI-powered PDF processing
-│   ├── generator.py        # Main PDFCardGenerator class
 │   ├── gemini_client.py    # Gemini API wrapper
 │   ├── pdf_processor.py    # PDF page extraction
 │   ├── prompts.py          # AI prompts
