@@ -354,8 +354,8 @@ class CardGenerator:
             self._display_card(card, card_type, i, total)
             
             while True:
-                response = input("➕ Add this card to the deck? (yes/no): ").strip().lower()
-                if response in ("yes", "y"):
+                response = input("➕ Add this card to the deck? ([yes]/no): ").strip().lower()
+                if response in ("yes", "y", ""):
                     approved_cards.append(card)
                     print("   ✓ Card will be added.")
                     break
