@@ -292,6 +292,82 @@ class CardGenerator:
         
         return cards_added
     
+    # ==================== Card Inspection ====================
+    
+    def _ask_inspect_cards(self) -> bool:
+        """Ask the user if they want to inspect cards before adding them.
+        
+        Returns:
+            True if user wants to inspect, False otherwise.
+        """
+        while True:
+            response = input("\n🔍 Do you want to inspect cards before adding them to the deck? (yes/no): ").strip().lower()
+            if response in ("yes", "y"):
+                return True
+            elif response in ("no", "n"):
+                return False
+            else:
+                print("   Please enter 'yes' or 'no'.")
+    
+    def _display_card(self, card: Dict[str, Any], card_type: str, index: int, total: int) -> None:
+        """Display a single card in the terminal.
+        
+        Args:
+            card: The card data dict.
+            card_type: Either "vocabulary" or "grammar".
+            index: Current card index (0-based).
+            total: Total number of cards.
+        """
+        print(f"\n{'='*50}")
+        print(f"📇 Card {index + 1} of {total} ({card_type})")
+        print(f"{'='*50}")
+        
+        if card_type == "vocabulary":
+            print(f"📝 Word: {card.get('word', 'N/A')}")
+            print(f"🔤 Translation: {card.get('word_translation', 'N/A')}")
+            print(f"💬 Sentence: {card.get('sentence', 'N/A')}")
+            print(f"🔤 Sentence Translation: {card.get('sentence_translation', 'N/A')}")
+        else:  # grammar
+            print(f"❓ Question: {card.get('question', 'N/A')}")
+            print(f"✅ Answer: {card.get('answer', 'N/A')}")
+        
+        print(f"{'='*50}")
+    
+    def _inspect_cards_interactively(
+        self,
+        cards: List[Dict[str, Any]],
+        card_type: str
+    ) -> List[Dict[str, Any]]:
+        """Let the user inspect cards one by one and choose which to add.
+        
+        Args:
+            cards: List of card dicts.
+            card_type: Either "vocabulary" or "grammar".
+            
+        Returns:
+            List of approved cards.
+        """
+        approved_cards = []
+        total = len(cards)
+        
+        for i, card in enumerate(cards):
+            self._display_card(card, card_type, i, total)
+            
+            while True:
+                response = input("➕ Add this card to the deck? (yes/no): ").strip().lower()
+                if response in ("yes", "y"):
+                    approved_cards.append(card)
+                    print("   ✓ Card will be added.")
+                    break
+                elif response in ("no", "n"):
+                    print("   ✗ Card skipped.")
+                    break
+                else:
+                    print("   Please enter 'yes' or 'no'.")
+        
+        print(f"\n📊 Summary: {len(approved_cards)}/{total} cards approved for addition.")
+        return approved_cards
+    
     # ==================== PDF Processing ====================
     
     def generate_from_pdf(
@@ -382,6 +458,10 @@ class CardGenerator:
         if verbose:
             print(f"   → Generated {len(cards)} grammar cards")
         
+        # Ask if user wants to inspect cards before adding
+        if cards and self._ask_inspect_cards():
+            cards = self._inspect_cards_interactively(cards, "grammar")
+        
         # Ensure grammar deck exists and add cards
         self.anki.create_grammar_deck()
         
@@ -436,6 +516,10 @@ class CardGenerator:
         
         # Ensure chapter deck exists
         self.anki.create_vocabulary_chapter(chapter_name)
+        
+        # Ask if user wants to inspect cards before adding
+        if cards and self._ask_inspect_cards():
+            cards = self._inspect_cards_interactively(cards, "vocabulary")
         
         # Add cards
         for card in cards:
