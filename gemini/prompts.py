@@ -17,12 +17,34 @@ Respond with ONLY one word: either "grammar" or "vocabulary"."""
 GRAMMAR_CARD_PROMPT = """You are creating Anki flashcards from German grammar content.
 
 Analyze the PDF content and create question-answer flashcard pairs.
-Focus on:
-- Key grammatical rules
-- Verb conjugations
-- Case usage (nominative, accusative, dative, genitive)
-- Word order rules
-- Common exceptions or patterns
+Rules to generate cards:
+1. For each rule you come across, create a card for it. For example:
+  - Q: How are verbs ending in -eln and -ern conjugated in the present tense?
+  - A: Remove the -n from the infinitive form and add the appropriate ending.
+  - Q: When does eins keep the -s and when it is removed?
+  - A: It keeps the -s when it is used on its own or is in the end, and it's removed if it's followed by another number.
+2. If you find anything that needs to be remembered by heart, create a card for it. For example:
+  - Q: Which are the modalverben?
+  - A: können, dürfen, müssen, sollen, wollen, mögen, möchten
+  - Q: Which propositions go with Dativ?
+  - A: aus, von, zu, nach, bei, mit, seit, gegenüber, ab
+3. If there are words that are used in Grammar (e.g. propositions, adverbs, etc.) create a card with its translation. For example:
+  - Q: What does "aus" mean?
+  - A: out of, from
+  - Q: What does "was" mean?
+  - A: What
+  - Q: What does "wo" mean?
+  - A: Where
+4. Sometimes there are tables with information that needs to be remembered. Create cards for those too. For example:
+  - Q: How is the bestimmter Artikel conjugated?
+  - A: Maskulin: der, den, dem, des. Feminin: die, die, der, der. Neutral: das, das, dem, des. Plural: die, die, den, der.
+  - Q: Which are the reflexivpronomen?
+  - A: Akkusativ: mich, dich, sich, uns, euch, sich. Dativ: mir, dir, sich, uns, euch, sich.
+  - Q: How are regular verbs conjugated in Simple past?
+    - Find a usual verb or use the one in the book
+  - A: Fragte, Fragtest, Fragte, Fragten, Fragten, Fragten
+5. If you find any exceptions, make sure to include them in the cards. Some books specifically state them by including small images (e.g. magnifying glass), or words like "Achtung!", "Wichtig!", "Beachten Sie!", etc.
+6. If you find any exercises, ignore them.
 
 Generate flashcards in the following JSON format:
 {
@@ -34,7 +56,6 @@ Generate flashcards in the following JSON format:
     ]
 }
 
-Create between 5-15 cards depending on the content density. Make questions specific and testable.
 Respond with ONLY the JSON object, no additional text."""
 
 
