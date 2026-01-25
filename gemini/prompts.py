@@ -35,6 +35,7 @@ Rules to generate cards:
   - A: What
   - Q: What does "wo" mean?
   - A: Where
+  - Don't create cards for words that are not used in the grammar. E.g. do not create a card for what "Ankommen" means.
 4. Sometimes there are tables with information that needs to be remembered. Create cards for those too. For example:
   - Q: How is the bestimmter Artikel conjugated?
   - A: Maskulin: der, den, dem, des. Feminin: die, die, der, der. Neutral: das, das, dem, des. Plural: die, die, den, der.
@@ -47,6 +48,7 @@ Rules to generate cards:
 6. If you find any exercises, ignore them.
 7. Don't create cards for grammatic rules that you don't see in the pdf. Only include the rules you see.
 8. All translations from German should be in English.
+9. For each rule/exception you find, add an example in the answer to understand it better.
 
 Generate flashcards in the following JSON format:
 {
