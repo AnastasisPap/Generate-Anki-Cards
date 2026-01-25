@@ -45,6 +45,8 @@ Rules to generate cards:
   - A: Fragte, Fragtest, Fragte, Fragten, Fragten, Fragten
 5. If you find any exceptions, make sure to include them in the cards. Some books specifically state them by including small images (e.g. magnifying glass), or words like "Achtung!", "Wichtig!", "Beachten Sie!", etc.
 6. If you find any exercises, ignore them.
+7. Don't create cards for grammatic rules that you don't see in the pdf. Only include the rules you see.
+8. All translations from German should be in English.
 
 Generate flashcards in the following JSON format:
 {
