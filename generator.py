@@ -6,6 +6,9 @@ Supports:
 - Manual card creation from JSON files
 """
 
+import warnings
+warnings.filterwarnings("ignore")
+
 import json
 import sys
 from pathlib import Path

@@ -36,6 +36,7 @@ Rules to generate cards:
   - Q: What does "wo" mean?
   - A: Where
   - Don't create cards for words that are not used in the grammar. E.g. do not create a card for what "Ankommen" means.
+  - Only add these translations if they are introduced in that chapter.
 4. Sometimes there are tables with information that needs to be remembered. Create cards for those too. For example:
   - Q: How is the bestimmter Artikel conjugated?
   - A: Maskulin: der, den, dem, des. Feminin: die, die, der, der. Neutral: das, das, dem, des. Plural: die, die, den, der.
@@ -47,8 +48,42 @@ Rules to generate cards:
 5. If you find any exceptions, make sure to include them in the cards. Some books specifically state them by including small images (e.g. magnifying glass), or words like "Achtung!", "Wichtig!", "Beachten Sie!", etc.
 6. If you find any exercises, ignore them.
 7. Don't create cards for grammatic rules that you don't see in the pdf. Only include the rules you see.
-8. All translations from German should be in English.
+8. All translations from German should be in Greek.
 9. For each rule/exception you find, add an example in the answer to understand it better.
+10. All explanations should be in Greek.
+11. Really important: the cards must be as simple to understand as possible. Don't use complex sentences or long explanations.
+12. When you think a translation is important then don't make a new card, just add a parenthesis next to the German word with the translation.
+
+Good examples, they don't include examples but you must provide an example for each rule/exception:
+
+1. Chapter of der Artikel
+
+- Q: πως κλίνεται το άρθρο;
+- A: Maskulin: der, den, dem, des. Feminin: die, die, der, der. Neutral: das, das, dem, des. Plural: die, die, den, der.
+
+2. Chapter of das Verb
+
+- Q: Τι γίνεται αν το τελευταίο γράμμα του θέματος είναι d, t ή m, n και μετά υπάρχει σύμφωνο εκτός των r, l;
+- A: Οι καταλήξεις γίνονται -e, -est, -et, -en, -et, -en, -en
+
+3. Chapter of trennbare und untrennbare Verben
+
+- Q: Πότε χωρίζεται το πρόθεμα από το κυρίως ρήμα;
+- Α: Όταν το πρόθεμα τονίζεται στην προφορά τότε χωρίζεται.
+
+4. Chapter of Wortstellung
+
+- Q: Ποιά θέση παίρνει το ρήμα σε καταφατικές προτάσεις;
+- Α: Τη δεύτερη θέση.
+- Q: Ποιά θέση παίρνει το ρήμα σε ερωτηματικές προτάσεις;
+- Α: Τη πρώτη θέση.
+
+5. Chapter of konjuktionen
+
+- Q: Ποιοι είναι οι σύνδεσμοι που δεν ανήκουν σε καμία πρόταση;
+- A: Sondern (αλλά), Oder (ή), Und (και), Denn (διότι), Aber (αλλά)
+- Q: Ποια είναι η διαφορά μεταξύ sondern και aber;
+- A: Το sondern συνδέει αντιθετικές προτάσεις όπου η πρώτη πρέπει να είναι αρνητική.
 
 Generate flashcards in the following JSON format:
 {
@@ -72,9 +107,9 @@ Some PDFs may contain vocabulary from multiple different categories (e.g., both 
 For each category found, extract all vocabulary words with example sentences.
 For each word, provide:
 - The German word
-- The English translation
+- The Greek translation
 - A German example sentence using the word
-- The English translation of the sentence
+- The Greek translation of the sentence
 
 Generate your response in the following JSON format:
 {{
@@ -84,9 +119,9 @@ Generate your response in the following JSON format:
             "cards": [
                 {{
                     "word": "German word",
-                    "word_translation": "English translation",
+                    "word_translation": "Greek translation",
                     "sentence": "German sentence using the word",
-                    "sentence_translation": "English translation of the sentence"
+                    "sentence_translation": "Greek translation of the sentence"
                 }}
             ]
         }}
