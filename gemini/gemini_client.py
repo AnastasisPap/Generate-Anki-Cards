@@ -7,16 +7,12 @@ Uses PDF bytes directly instead of extracted text for better comprehension.
 import json
 import os
 import re
-from typing import Literal, Optional, List, Dict, Tuple
+from typing import Optional, List, Dict, Tuple
 
 from google import genai
 from google.genai import types
 
-from .prompts import (
-    CLASSIFICATION_PROMPT,
-    GRAMMAR_CARD_PROMPT,
-    get_vocabulary_cards_prompt,
-)
+from .prompts import build_classification_prompt, get_deck_type_prompt
 
 
 class GeminiClient:
@@ -26,10 +22,11 @@ class GeminiClient:
     Accepts PDF bytes directly for better document understanding.
     """
     
-    def __init__(self, api_key: Optional[str] = None, model: str = "gemini-2.0-flash"):
+    def __init__(self, config, api_key: Optional[str] = None, model: str = "gemini-2.0-flash"):
         """Initialize the Gemini client.
         
         Args:
+            config: A LanguageConfig object with name, deck_types, etc.
             api_key: The Gemini API key. If None, reads from GEMINI_API_KEY env var.
             model: The Gemini model to use. Defaults to gemini-2.0-flash.
         
@@ -45,6 +42,12 @@ class GeminiClient:
         
         self.client = genai.Client(api_key=self.api_key)
         self.model = model
+        self.config = config
+        
+        # Build classification prompt from config's deck types
+        self._classification_prompt = build_classification_prompt(
+            config.name, config.deck_types
+        )
     
     def _extract_json(self, text: str) -> dict:
         """Extract JSON from model response, handling markdown code blocks.
@@ -75,39 +78,52 @@ class GeminiClient:
         
         return json.loads(json_str)
     
-    def classify_content(self, pdf_bytes: bytes) -> Literal["grammar", "vocabulary"]:
-        """Classify if PDF content is grammar or vocabulary.
+    def classify_content(self, pdf_bytes: bytes) -> str:
+        """Classify PDF content type.
         
         Args:
             pdf_bytes: The PDF pages as bytes.
             
         Returns:
-            Either "grammar" or "vocabulary".
+            A content type string (e.g., "grammar", "radicals", "vocabulary").
         """
         response = self.client.models.generate_content(
             model=self.model,
             contents=[
                 types.Part.from_bytes(data=pdf_bytes, mime_type='application/pdf'),
-                CLASSIFICATION_PROMPT
+                self._classification_prompt
             ]
         )
         result = response.text.strip().lower()
         
-        if "grammar" in result:
-            return "grammar"
+        # Check against all configured deck types
+        for dt in self.config.deck_types:
+            if dt.lower() in result:
+                return dt.lower()
+        # Fallback to the first available deck type
+        if self.config.deck_types:
+            return self.config.deck_types[0].lower()
         return "vocabulary"
     
-    def generate_grammar_cards(self, pdf_bytes: bytes, custom_prompt: Optional[str] = None) -> List[Dict]:
-        """Generate grammar card Q&A pairs from PDF.
+    def generate_qa_cards(
+        self,
+        deck_type: str,
+        pdf_bytes: bytes,
+        custom_prompt: Optional[str] = None,
+        template: Optional[str] = None
+    ) -> List[Dict]:
+        """Generate Q&A card pairs from PDF for a given deck type.
         
         Args:
+            deck_type: The deck type name (e.g., "Grammar", "Radicals").
             pdf_bytes: The PDF pages as bytes.
             custom_prompt: Optional additional instructions to append to the prompt.
+            template: Optional card formatting template (e.g., "basic", "detailed").
             
         Returns:
             List of dicts with 'question' and 'answer' keys.
         """
-        prompt = GRAMMAR_CARD_PROMPT
+        prompt = get_deck_type_prompt(self.config.name, deck_type, template=template)
         if custom_prompt:
             prompt = f"{prompt}\n\nAdditional instructions: {custom_prompt}"
         
@@ -122,54 +138,4 @@ class GeminiClient:
         data = self._extract_json(response.text)
         return data.get("cards", [])
     
-    def generate_vocabulary_cards(
-        self, 
-        pdf_bytes: bytes, 
-        existing_categories: List[str] = None,
-        custom_prompt: Optional[str] = None
-    ) -> List[Tuple[str, List[Dict]]]:
-        """Generate vocabulary cards from PDF, including category detection.
-        
-        This combines category detection and card generation into a single API call.
-        Supports PDFs with multiple vocabulary categories.
-        
-        Args:
-            pdf_bytes: The PDF pages as bytes.
-            existing_categories: List of existing category names. If provided,
-                Gemini will prefer matching one of these.
-            custom_prompt: Optional additional instructions to append to the prompt.
-            
-        Returns:
-            A list of tuples, each containing (category_name, cards) where:
-            - category_name: The detected/matched category (e.g., "Body Parts")
-            - cards: List of dicts with 'word', 'word_translation', 
-                     'sentence', and 'sentence_translation' keys.
-        """
-        prompt = get_vocabulary_cards_prompt(existing_categories or [])
-        if custom_prompt:
-            prompt = f"{prompt}\n\nAdditional instructions: {custom_prompt}"
-        
-        response = self.client.models.generate_content(
-            model=self.model,
-            contents=[
-                types.Part.from_bytes(data=pdf_bytes, mime_type='application/pdf'),
-                prompt
-            ]
-        )
-        
-        data = self._extract_json(response.text)
-        
-        # Handle new multi-category format
-        if "categories" in data:
-            result = []
-            for cat_data in data["categories"]:
-                category = cat_data.get("category", "Vocabulary")
-                cards = cat_data.get("cards", [])
-                result.append((category, cards))
-            return result
-        
-        # Fallback for legacy single-category format
-        category = data.get("category", "Vocabulary")
-        cards = data.get("cards", [])
-        return [(category, cards)]
 

@@ -11,7 +11,7 @@ from typing import Optional, Dict
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from anki_generator import AnkiGenerator, GERMAN
+from anki_generator import AnkiGenerator, SUPPORTED_LANGUAGES
 
 from .pdf_processor import extract_pages_as_pdf
 from .gemini_client import GeminiClient
@@ -33,7 +33,8 @@ class PDFCardGenerator:
         self,
         api_key: Optional[str] = None,
         model: str = "gemini-2.0-flash",
-        output_file: str = "german_learning_deck.apkg",
+        language: str = "german",
+        output_file: Optional[str] = None,
         registry_path: str = "deck_registry.json"
     ):
         """Initialize the PDF card generator.
@@ -41,13 +42,20 @@ class PDFCardGenerator:
         Args:
             api_key: Gemini API key. If None, reads from GEMINI_API_KEY env var.
             model: Gemini model name. Defaults to gemini-2.0-flash.
+            language: Target language (e.g., "german", "chinese").
             output_file: Path to the output .apkg file.
             registry_path: Path to the deck registry JSON file.
         """
-        self.output_file = output_file
-        self.gemini = GeminiClient(api_key=api_key, model=model)
+        self._is_default_output = output_file is None
+        self.output_file = output_file or f"{language}_learning_deck.apkg"
+        
+        # Get language config
+        lang_key = language.lower()
+        self._config = SUPPORTED_LANGUAGES.get(lang_key, SUPPORTED_LANGUAGES["german"])
+        
+        self.gemini = GeminiClient(config=self._config, api_key=api_key, model=model)
         self.registry = DeckRegistry(registry_path=registry_path)
-        self.anki = AnkiGenerator(GERMAN)
+        self.anki = AnkiGenerator(self._config)
     
     def generate_from_pdf(
         self,
@@ -55,24 +63,19 @@ class PDFCardGenerator:
         start_page: int,
         end_page: int,
         content_type: Optional[str] = None,
-        verbose: bool = True
+        verbose: bool = True,
+        template: Optional[str] = None
     ) -> dict:
-        """Generate Anki cards from PDF pages.
-        
-        Main method that orchestrates the full pipeline:
-        1. Extract specified pages as PDF bytes
-        2. Pass PDF to Gemini for classification (if not provided)
-        3. Generate appropriate cards
-        4. Extend existing deck or create new one
-        5. Export updated deck
+        """Generate cards from a PDF file.
         
         Args:
             pdf_path: Path to the PDF file.
             start_page: Starting page number (1-indexed, inclusive).
             end_page: Ending page number (1-indexed, inclusive).
-            content_type: Optional. "grammar" or "vocabulary". If provided,
+            content_type: Optional. "grammar", "vocabulary", etc. If provided,
                 skips the classification API call.
             verbose: Whether to print progress messages.
+            template: Optional card formatting template (e.g., "basic", "detailed").
             
         Returns:
             A summary dict with:
@@ -81,6 +84,16 @@ class PDFCardGenerator:
                 - cards_generated: Number of cards generated
                 - deck_action: "extended" or "created"
         """
+        if content_type:
+            content_type = content_type.lower()
+            if content_type not in self._config.deck_type_names:
+                raise ValueError(
+                    f"Invalid content type '{content_type}' for {self._config.name}. "
+                    f"Valid types: {', '.join(self._config.deck_type_names)}"
+                )
+            if verbose:
+                print(f"🔍 Using provided content type: {content_type.upper()}")
+
         if verbose:
             print(f"📄 Extracting pages {start_page}-{end_page} from PDF...")
         
@@ -91,11 +104,7 @@ class PDFCardGenerator:
             print(f"📝 Extracted {len(pdf_bytes)} bytes ({end_page - start_page + 1} pages)")
         
         # Step 2: Classify content (skip if provided)
-        if content_type:
-            content_type = content_type.lower()
-            if verbose:
-                print(f"🔍 Using provided content type: {content_type.upper()}")
-        else:
+        if not content_type:
             if verbose:
                 print("🔍 Classifying content type...")
             content_type = self.gemini.classify_content(pdf_bytes)
@@ -103,12 +112,17 @@ class PDFCardGenerator:
                 print(f"   → Detected: {content_type.upper()}")
         
         # Step 3 & 4: Generate cards and update decks
-        if content_type == "grammar":
-            result = self._handle_grammar(pdf_bytes, verbose)
-        else:
-            result = self._handle_vocabulary(pdf_bytes, verbose)
+        deck_type = self._config.get_deck_type(content_type)
+        if deck_type is None:
+            deck_type = content_type.title()
+        result = self._handle_qa_type(deck_type, pdf_bytes, verbose, template=template)
         
-        # Step 5: Export
+        # Step 5: Determine export path if default, and Export
+        if self._is_default_output:
+            output_dir = Path(self._config.name) / deck_type.lower()
+            output_dir.mkdir(parents=True, exist_ok=True)
+            self.output_file = str(output_dir / f"{self._config.name}_{deck_type}.apkg")
+            
         if verbose:
             print(f"💾 Exporting to {self.output_file}...")
         
@@ -119,103 +133,48 @@ class PDFCardGenerator:
         
         return result
     
-    def _handle_grammar(self, pdf_bytes: bytes, verbose: bool) -> dict:
-        """Handle grammar content: generate cards and add to grammar deck.
+    def _handle_qa_type(self, deck_type: str, pdf_bytes: bytes, verbose: bool, template: Optional[str] = None) -> dict:
+        """Handle Q&A content: generate cards and add to the appropriate deck.
         
         Args:
+            deck_type: The deck type name (e.g., "Grammar", "Radicals").
             pdf_bytes: The PDF pages as bytes.
             verbose: Whether to print progress messages.
+            template: Optional card formatting template (e.g., "basic", "detailed").
             
         Returns:
             Summary dict with content_type and cards_generated.
         """
         if verbose:
-            print("📚 Generating grammar cards...")
+            print(f"📚 Generating {deck_type.lower()} cards...")
         
-        cards = self.gemini.generate_grammar_cards(pdf_bytes)
+        cards = self.gemini.generate_qa_cards(deck_type, pdf_bytes, template=template)
         
         if verbose:
-            print(f"   → Generated {len(cards)} grammar cards")
+            print(f"   → Generated {len(cards)} {deck_type.lower()} cards")
         
-        # Ensure grammar deck exists and add cards
-        self.anki.create_grammar_deck()
+        # Ensure deck exists and add cards
+        self.anki.create_qa_deck(deck_type)
         
         for card in cards:
-            self.anki.add_grammar_card(
+            self.anki.add_qa_card(
+                deck_type=deck_type,
                 question=card["question"],
                 answer=card["answer"]
             )
         
         return {
-            "content_type": "grammar",
+            "content_type": deck_type.lower(),
             "category": None,
             "cards_generated": len(cards),
         }
     
-    def _handle_vocabulary(self, pdf_bytes: bytes, verbose: bool) -> dict:
-        """Handle vocabulary content: detect category and generate cards in one call.
-        
-        Args:
-            pdf_bytes: The PDF pages as bytes.
-            verbose: Whether to print progress messages.
-            
-        Returns:
-            Summary dict with content_type, category, cards_generated, deck_action.
-        """
-        if verbose:
-            print("📚 Generating vocabulary cards...")
-        
-        # Get existing categories so Gemini can match them
-        existing_categories = self.registry.get_vocabulary_categories()
-        
-        # Single API call to get category and cards together
-        category, cards = self.gemini.generate_vocabulary_cards(pdf_bytes, existing_categories)
-        
-        if verbose:
-            print(f"   → Category: {category}")
-            print(f"   → Generated {len(cards)} vocabulary cards")
-        
-        # Check if category exists (Gemini should match, but do case-insensitive check)
-        existing_category = self.registry.find_matching_category(category)
-        
-        if existing_category:
-            deck_action = "extended"
-            chapter_name = existing_category
-            if verbose:
-                print(f"   → Extending existing deck: {existing_category}")
-        else:
-            deck_action = "created"
-            chapter_name = category
-            if verbose:
-                print(f"   → Creating new deck: {category}")
-        
-        # Ensure chapter deck exists
-        self.anki.create_vocabulary_chapter(chapter_name)
-        
-        # Add cards
-        for card in cards:
-            self.anki.add_vocabulary_card(
-                chapter=chapter_name,
-                word=card["word"],
-                word_translation=card["word_translation"],
-                sentence=card["sentence"],
-                sentence_translation=card["sentence_translation"]
-            )
-        
-        # Register the category
-        self.registry.register_vocabulary_category(chapter_name)
-        
-        return {
-            "content_type": "vocabulary",
-            "category": chapter_name,
-            "cards_generated": len(cards),
-            "deck_action": deck_action
-        }
 
 
 def main():
     """CLI entry point for the PDF card generator."""
     import argparse
+    from .templates import CARD_TEMPLATES
     
     parser = argparse.ArgumentParser(
         description="Generate Anki cards from German textbook PDFs using Gemini AI"
@@ -224,9 +183,14 @@ def main():
     parser.add_argument("start_page", type=int, help="Starting page number (1-indexed)")
     parser.add_argument("end_page", type=int, help="Ending page number (1-indexed)")
     parser.add_argument(
+        "-l", "--language",
+        choices=list(SUPPORTED_LANGUAGES.keys()),
+        default="german",
+        help="Target language for cards (default: german)"
+    )
+    parser.add_argument(
         "-o", "--output",
-        default="german_learning_deck.apkg",
-        help="Output .apkg file path (default: german_learning_deck.apkg)"
+        help="Output .apkg file path (default: <language>_learning_deck.apkg)"
     )
     parser.add_argument(
         "-r", "--registry",
@@ -245,14 +209,19 @@ def main():
     )
     parser.add_argument(
         "-t", "--type",
-        choices=["grammar", "vocabulary"],
-        help="Content type (grammar or vocabulary). If provided, skips classification."
+        help="Content type (e.g., grammar, vocabulary, radicals). If provided, skips classification."
+    )
+    parser.add_argument(
+        "--template",
+        choices=list(CARD_TEMPLATES.keys()),
+        help=f"Card formatting template to use (e.g. {', '.join(CARD_TEMPLATES.keys())})"
     )
     
     args = parser.parse_args()
     
     generator = PDFCardGenerator(
         model=args.model,
+        language=args.language,
         output_file=args.output,
         registry_path=args.registry
     )
@@ -262,16 +231,13 @@ def main():
         start_page=args.start_page,
         end_page=args.end_page,
         content_type=args.type,
-        verbose=not args.quiet
+        verbose=not args.quiet,
+        template=args.template
     )
     
     print(f"\nSummary:")
     print(f"  Content type: {result['content_type']}")
-    if result['category']:
-        print(f"  Category: {result['category']}")
     print(f"  Cards generated: {result['cards_generated']}")
-    if 'deck_action' in result:
-        print(f"  Deck action: {result['deck_action']}")
 
 
 if __name__ == "__main__":

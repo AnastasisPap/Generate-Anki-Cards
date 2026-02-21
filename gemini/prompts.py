@@ -1,11 +1,16 @@
 """
 Prompt templates for Gemini API interactions.
 
-Contains all prompts used to classify content and generate cards.
+Contains language-specific prompts used to classify content and generate cards.
 These prompts are used alongside PDF content passed via Part.from_bytes().
 """
 
-CLASSIFICATION_PROMPT = """You are analyzing a page from a German language learning textbook.
+
+# =============================================================================
+# German Prompts
+# =============================================================================
+
+CLASSIFICATION_PROMPT_DE = """You are analyzing a page from a German language learning textbook.
 
 Analyze the PDF content and determine if it is primarily:
 1. "grammar" - If it focuses on grammatical rules, verb conjugations, case endings, sentence structure, etc.
@@ -14,7 +19,7 @@ Analyze the PDF content and determine if it is primarily:
 Respond with ONLY one word: either "grammar" or "vocabulary"."""
 
 
-GRAMMAR_CARD_PROMPT = """You are creating Anki flashcards from German grammar content.
+GRAMMAR_CARD_PROMPT_DE = """You are creating Anki flashcards from German grammar content.
 
 Analyze the PDF content and create question-answer flashcard pairs.
 Rules to generate cards:
@@ -83,72 +88,157 @@ Good examples, they don't include examples but you must provide an example for e
 - Q: Ποιοι είναι οι σύνδεσμοι που δεν ανήκουν σε καμία πρόταση;
 - A: Sondern (αλλά), Oder (ή), Und (και), Denn (διότι), Aber (αλλά)
 - Q: Ποια είναι η διαφορά μεταξύ sondern και aber;
-- A: Το sondern συνδέει αντιθετικές προτάσεις όπου η πρώτη πρέπει να είναι αρνητική.
+- A: Το sondern συνδέει αντιθετικές προτάσεις όπου η πρώτη πρέπει να είναι αρνητική."""
 
-Generate flashcards in the following JSON format:
-{
-    "cards": [
-        {
-            "question": "Clear question about the grammar point",
-            "answer": "Concise but complete answer"
-        }
-    ]
+
+VOCABULARY_CARD_PROMPT_DE = """You are creating Anki flashcards from German vocabulary content.
+
+Analyze the PDF and extract all vocabulary words with example sentences.
+For each word, provide:
+- The German word (as the question)
+- The Greek translation, a German example sentence, and the Greek translation of the sentence (as the answer)
+
+Extract all vocabulary words from the PDF. Create natural, useful example sentences."""
+
+
+# =============================================================================
+# Chinese Prompts
+# =============================================================================
+
+CLASSIFICATION_PROMPT_ZH = """You are analyzing a page from a Chinese (Mandarin) language learning textbook.
+
+Analyze the PDF content and determine if it is primarily:
+1. "radicals" - If it focuses on Chinese radicals (部首), their meanings, stroke order, or how they combine to form characters
+2. "vocabulary" - If it focuses on teaching new words/characters, usually organized by topic/theme (e.g., food, family, travel)
+
+Respond with ONLY one word: either "radicals" or "vocabulary"."""
+
+
+RADICALS_CARD_PROMPT_ZH = """You are creating Anki flashcards from Chinese (Mandarin) radical (部首) content.
+
+Analyze the PDF content and create question-answer flashcard pairs about Chinese radicals.
+MOST IMPORTANT RULE: The format must follow the followed template, do not deviate from it.
+Rules to generate cards:
+1. For each radical you find, create a card.
+2. If the radical has a variant form, create a new card for it, separate from the original radical card. For example:
+  - So if a radical has a variant form, 2 cards should be created for it. One for the original radical and one for the variant form.
+3. If there are tables listing radicals, create a card for each radical in the table.
+4. If you find any exercises, ignore them.
+5. Don't create cards for radicals that you don't see in the PDF.
+6. Keep cards simple and easy to understand.
+7. If the table/file contains examples use those examples in the card, find the pinyin and translation of the example. If there are no examples, create one.
+8. Do not change the format of the example sentences, keep them as they are. Make sure that the pinyin and translation are correct.
+ - For example if the sentence is 你很漂亮, then do not translate as you, very, beautiful. Translate it as You are very beautiful.
+
+Bad example:
+Question: What does the radical 人 mean?
+Answer: rén. Human, person, people. <br> Variants: 亻<br> Examples: 今 (Jīn) - Today.
+
+Good example:
+Question: What does the radical 人 mean?
+Answer: rén. Human, person, people. <br> Variants: 亻<br> Examples: 我是一个人。 (Wǒ shì yī gè rén.). I am a person.
+
+The bad example doesn't have a full sentence which includes the radical. The good example has a full sentence which includes the radical and the appropriate translation.
+"""
+
+
+VOCABULARY_CARD_PROMPT_ZH = """You are creating Anki flashcards from Chinese (Mandarin) vocabulary content.
+
+Analyze the PDF and extract all vocabulary words with example sentences.
+For each word, provide:
+- The Chinese word, including pinyin (as the question)
+- The English translation, a Chinese example sentence, and the English translation of the sentence (as the answer)
+
+Extract all vocabulary words from the PDF. Create natural, useful example sentences.
+Always include pinyin in the question field, e.g. "苹果 (píngguǒ)".
+
+Finally and most importantly, if the chinese word is not a radical, then identify all the radicals in the word and add them
+including their translation and pinyin in the answer field."""
+
+# =============================================================================
+# Prompt Dispatch
+# =============================================================================
+
+# Maps (language_name, deck_type_lowercase) -> prompt string
+DECK_TYPE_PROMPTS = {
+    ("German", "grammar"): GRAMMAR_CARD_PROMPT_DE,
+    ("German", "vocabulary"): VOCABULARY_CARD_PROMPT_DE,
+    ("Chinese", "radicals"): RADICALS_CARD_PROMPT_ZH,
+    ("Chinese", "vocabulary"): VOCABULARY_CARD_PROMPT_ZH,
 }
 
-Respond with ONLY the JSON object, no additional text."""
 
-
-VOCABULARY_CARDS_PROMPT_TEMPLATE = """You are creating Anki flashcards from German vocabulary content.
-
-Analyze the PDF and identify all vocabulary categories/topics being taught.
-Some PDFs may contain vocabulary from multiple different categories (e.g., both "Body Parts" and "Clothing" on the same pages).
-{existing_categories_section}
-
-For each category found, extract all vocabulary words with example sentences.
-For each word, provide:
-- The German word
-- The Greek translation
-- A German example sentence using the word
-- The Greek translation of the sentence
-
-Generate your response in the following JSON format:
-{{
-    "categories": [
-        {{
-            "category": "The vocabulary category (2-4 words, Title Case)",
-            "cards": [
-                {{
-                    "word": "German word",
-                    "word_translation": "Greek translation",
-                    "sentence": "German sentence using the word",
-                    "sentence_translation": "Greek translation of the sentence"
-                }}
-            ]
-        }}
-    ]
-}}
-
-Group words by their appropriate category. If all words belong to one category, return a single category object.
-Extract all vocabulary words from the PDF. Create natural, useful example sentences.
-Respond with ONLY the JSON object, no additional text."""
-
-
-def get_vocabulary_cards_prompt(existing_categories: list) -> str:
-    """Generate the vocabulary cards prompt with existing categories.
+def build_classification_prompt(language_name: str, deck_types: list) -> str:
+    """Auto-generate a classification prompt from the language's deck types.
     
     Args:
-        existing_categories: List of existing category names.
-        
-    Returns:
-        The formatted prompt string.
-    """
-    if existing_categories:
-        categories_list = ", ".join(f'"{cat}"' for cat in existing_categories)
-        section = f"""Existing categories: {categories_list}
-
-If the content matches one of these existing categories, use that exact category name.
-Otherwise, create a new appropriate category name."""
-    else:
-        section = """Examples of categories: "Body Parts", "Food and Drinks", "Clothing", "Family Members", "Colors", "Animals", "Transportation", "Weather", "Professions", etc."""
+        language_name: E.g., "German", "Chinese".
+        deck_types: List of deck type names (e.g., ["Vocabulary", "Grammar"]).
     
-    return VOCABULARY_CARDS_PROMPT_TEMPLATE.format(existing_categories_section=section)
+    Returns:
+        A classification prompt string.
+    """
+    type_descriptions = []
+    all_types_list = []
+    
+    for i, dt in enumerate(deck_types, 1):
+        dt_lower = dt.lower()
+        if dt_lower == "vocabulary":
+            desc = f'{i}. "vocabulary" - If it focuses on teaching new words, usually organized by topic/theme'
+        else:
+            desc = f'{i}. "{dt_lower}"'
+        type_descriptions.append(desc)
+        all_types_list.append(f'"{dt_lower}"')
+    
+    type_list = "\n".join(type_descriptions)
+    
+    if len(all_types_list) > 1:
+        all_types = ", ".join(all_types_list[:-1]) + f', or {all_types_list[-1]}'
+    else:
+        all_types = all_types_list[0]
+    
+    return (
+        f"You are analyzing a page from a {language_name} language learning textbook.\n\n"
+        f"Analyze the PDF content and determine if it is primarily:\n"
+        f"{type_list}\n\n"
+        f"Respond with ONLY one word: {all_types}."
+    )
+
+
+from .templates import CARD_TEMPLATES, DEFAULT_TEMPLATES
+
+def get_deck_type_prompt(language_name: str, deck_type: str, template: str = None) -> str:
+    """Get the Q&A prompt for a specific deck type.
+    
+    Args:
+        language_name: E.g., "German", "Chinese".
+        deck_type: Deck type name (e.g., "Grammar", "Radicals").
+        template: Optional template name (e.g. "basic", "detailed").
+    
+    Returns:
+        The composed prompt string with the requested JSON template.
+    
+    Raises:
+        ValueError: If no prompt is defined for this language/deck_type combo,
+                    or if an invalid template is requested.
+    """
+    key = (language_name, deck_type.lower())
+    base_prompt = DECK_TYPE_PROMPTS.get(key)
+    if base_prompt is None:
+        raise ValueError(
+            f"No base prompt defined for language '{language_name}', "
+            f"deck type '{deck_type}'. "
+            f"Available: {list(DECK_TYPE_PROMPTS.keys())}"
+        )
+        
+    if template is None:
+        template = DEFAULT_TEMPLATES.get(deck_type.lower(), "basic")
+        
+    template_str = CARD_TEMPLATES.get(template.lower())
+    if template_str is None:
+        raise ValueError(
+            f"Invalid template '{template}'. "
+            f"Available templates: {list(CARD_TEMPLATES.keys())}"
+        )
+        
+    return f"{base_prompt}\n\n{template_str}"

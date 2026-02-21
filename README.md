@@ -4,12 +4,10 @@ A Python tool to create Anki flashcard decks for German language learning. Suppo
 
 ## Features
 
-- 📚 **Vocabulary Cards**: German→English and English→German with TTS support
-- 📖 **Grammar Cards**: Question/answer format for grammar rules
-- 🤖 **AI-Powered PDF Processing**: Automatically extract cards from textbook PDFs
-- 🗂️ **Smart Deck Management**: Extends existing decks instead of creating duplicates
-- 🏷️ **Category Detection**: AI detects vocabulary topics (Body Parts, Food, etc.)
-- 💬 **Custom Instructions**: Pass additional prompts to guide AI card generation
+- 📚 **Dynamic Deck Types**: Define any number of custom deck types per language (e.g., Vocabulary, Grammar, Radicals).
+- 🤖 **AI-Powered Flashcards**: Automatically extract Q&A pairs from textbook PDFs using Google's Gemini API.
+- 🎯 **Smart Content Routing**: AI analyzes PDF pages and routes generated cards into the correct sub-deck.
+- 💬 **Custom Instructions**: Pass additional prompts to guide AI card generation styling perfectly.
 
 ## Installation
 
@@ -47,16 +45,18 @@ python generator.py --pdf german_textbook.pdf -s 10 -e 15
 
 # Skip classification if you know the content type (saves 1 API call)
 python generator.py --pdf german_textbook.pdf -s 10 -e 15 -t vocabulary
-python generator.py --pdf german_textbook.pdf -s 10 -e 15 -t grammar
+python generator.py --pdf chinese_textbook.pdf -s 10 -e 15 --language chinese -t radicals
 
 # Specify a different Gemini model
 python generator.py --pdf german_textbook.pdf -s 10 -e 15 -m gemini-1.5-pro
 
-# Specify custom output file
+# Specify custom output file (by default saves to Language/deck_type/Language_DeckType.apkg)
 python generator.py --pdf german_textbook.pdf -s 10 -e 15 -o my_deck.apkg
 
+# Use a specific card formatting template (e.g. 'basic', 'detailed', 'radicals', 'chinese_characters')
+python generator.py --pdf german_textbook.pdf -s 10 -e 15 -t vocabulary --template basic
+
 # Add custom instructions to Gemini
-python generator.py --pdf german_textbook.pdf -s 10 -e 15 --prompt "Focus only on nouns"
 python generator.py --pdf german_textbook.pdf -s 10 -e 15 --prompt "Make the example sentences shorter"
 ```
 
@@ -65,6 +65,7 @@ python generator.py --pdf german_textbook.pdf -s 10 -e 15 --prompt "Make the exa
 ```python
 from generator import CardGenerator
 
+# Will automatically use GERMAN config by default
 generator = CardGenerator()
 result = generator.generate_from_pdf(
     pdf_path="german_textbook.pdf",
@@ -72,16 +73,18 @@ result = generator.generate_from_pdf(
     end_page=15
 )
 
-# With custom instructions
+# With custom instructions and a specific formatting template
 generator = CardGenerator(custom_prompt="Focus on verbs and include conjugations")
 result = generator.generate_from_pdf(
     pdf_path="german_textbook.pdf",
     start_page=10,
-    end_page=15
+    end_page=15,
+    content_type="grammar",
+    template="detailed"
 )
 
 print(f"Generated {result['cards_generated']} cards")
-print(f"Content type: {result['content_type']}")  # "grammar" or "vocabulary"
+print(f"Deck route: {result['content_type']}")  # e.g. "grammar"
 ```
 
 ### Option 2: JSON File Import (Recommended for Manual Cards)
@@ -94,7 +97,7 @@ Add cards manually using a JSON file. This is ideal for adding custom cards or i
 # Import cards from JSON file
 python generator.py --json cards.json
 
-# Specify custom output file
+# Specify custom output file (by default saves to Language/Language_learning_deck.apkg for multiple decks)
 python generator.py --json cards.json -o my_deck.apkg
 ```
 
@@ -104,17 +107,20 @@ python generator.py --json cards.json -o my_deck.apkg
 {
   "vocabulary": [
     {
-      "chapter": "Body Parts",
-      "word": "der Kopf",
-      "word_translation": "head",
-      "sentence": "Mein Kopf tut weh.",
-      "sentence_translation": "My head hurts."
+      "question": "der Kopf",
+      "answer": "head\n\nMein Kopf tut weh.\nMy head hurts."
     }
   ],
   "grammar": [
     {
       "question": "What is the accusative form of 'der'?",
       "answer": "den"
+    }
+  ],
+  "radicals": [
+    {
+      "question": "What does the radical 氵 mean?",
+      "answer": "Water (水 shuǐ). Common characters: 海, 洗."
     }
   ]
 }
@@ -127,12 +133,12 @@ See `example_cards.json` for a complete example.
 ```python
 from generator import CardGenerator
 
-generator = CardGenerator()
+generator = CardGenerator(language="german")
 result = generator.generate_from_json("cards.json")
 
-print(f"Vocabulary cards: {result['vocabulary_cards']}")
-print(f"Grammar cards: {result['grammar_cards']}")
-print(f"Categories: {result['categories']}")
+print(f"Total cards: {result['total_cards']}")
+for deck, count in result['deck_counts'].items():
+    print(f"{deck}: {count} cards")
 ```
 
 ### Option 3: Programmatic Card Creation
@@ -144,21 +150,17 @@ from anki_generator import AnkiGenerator, GERMAN
 
 gen = AnkiGenerator(GERMAN)
 
-# Create vocabulary chapter
-gen.create_vocabulary_chapter("Body Parts")
-
-# Add vocabulary cards (creates German→English and English→German pairs)
-gen.add_vocabulary_card(
-    chapter="Body Parts",
-    word="der Kopf",
-    word_translation="head",
-    sentence="Mein Kopf tut weh.",
-    sentence_translation="My head hurts."
+# Standard generic Q&A card creation for any type
+gen.create_qa_deck("Vocabulary")
+gen.add_qa_card(
+    deck_type="Vocabulary",
+    question="der Kopf",
+    answer="head\n\nMein Kopf tut weh.\nMy head hurts."
 )
 
-# Create grammar cards
-gen.create_grammar_deck()
-gen.add_grammar_card(
+gen.create_qa_deck("Grammar")
+gen.add_qa_card(
+    deck_type="Grammar",
     question="What is the accusative form of 'der'?",
     answer="den"
 )
@@ -167,26 +169,39 @@ gen.add_grammar_card(
 gen.export("german_learning_deck.apkg")
 ```
 
-## Deck Structure
+## Deck Structure (in Anki)
 
 ```text
 German
 ├── Vocabulary
-│   ├── Body Parts
-│   ├── Food and Drinks
-│   └── [other categories...]
 └── Grammar
+```
+
+## Default Output Directory Structure (on Disk)
+
+If no `--output` path is specified, the pipeline will automatically organize generated `.apkg` files into an intuitive directory tree:
+
+```text
+Language/
+└── deck_type/
+    └── Language_DeckType.apkg
+```
+
+Example: `Chinese/radicals/Chinese_Radicals.apkg`
+
+If importing a JSON file with multiple mapped deck types at once, it saves to the language root:
+
+```text
+German/
+└── German_learning_deck.apkg
 ```
 
 ## How the AI Works
 
 1. **PDF Processing**: Extracts specified pages from your PDF
-2. **Content Classification**: Gemini determines if it's grammar or vocabulary content
-3. **Category Detection**: For vocabulary, detects the topic (e.g., "Body Parts")
-4. **Card Generation**: Creates appropriate flashcards with translations and example sentences
-5. **Deck Management**:
-   - Grammar → Extends the single Grammar deck
-   - Vocabulary → Extends existing category or creates new one
+2. **Content Classification**: Gemini dynamically determines the content type based on the active language's configured `deck_types` lists (e.g. is this "vocabulary" or "radicals"?).
+3. **Card Generation**: Evaluates the PDF against a highly targeted formatting prompt to pull Q&A flashcards.
+4. **Deck Routing**: Dynamically ensures the sub-deck for that type exists (`Language::Type`) and loads the cards into it.
 
 ## Files
 
@@ -203,9 +218,9 @@ GenerateAnki/
 │
 ├── gemini/                  # AI-powered PDF processing
 │   ├── gemini_client.py    # Gemini API wrapper
-│   ├── pdf_processor.py    # PDF page extraction
 │   ├── prompts.py          # AI prompts
-│   └── deck_registry.py    # Tracks existing categories
+│   ├── templates.py        # Card formatting JSON templates
+│   └── pdf_processor.py    # PDF page extraction
 │
 ├── requirements.txt
 └── README.md
@@ -226,14 +241,9 @@ echo 'export GEMINI_API_KEY="your-api-key"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-### Deck Registry
+## Adding New Languages & Deck Types
 
-The file `deck_registry.json` tracks created vocabulary categories. This ensures:
-
-- New cards for "Body Parts" extend the existing deck
-- Case-insensitive matching ("body parts" → "Body Parts")
-
-## Adding New Languages
+Adding a new language or type is driven completely by the `config.py` and `prompts.py` files.
 
 ```python
 from anki_generator import AnkiGenerator
@@ -243,7 +253,8 @@ SPANISH = LanguageConfig(
     name="Spanish",
     native_code="es_ES",
     translation_language="English",
-    translation_code="en_US"
+    translation_code="en_US",
+    deck_types=["Vocabulary", "Grammar", "Conjugations"] # Define any N types
 )
 
 gen = AnkiGenerator(SPANISH)
@@ -254,7 +265,7 @@ gen = AnkiGenerator(SPANISH)
 1. Open Anki
 2. Go to **File → Import**
 3. Select the generated `.apkg` file
-4. Cards will appear under `German::Vocabulary::` or `German::Grammar`
+4. Cards will appear under `Language::Type` (e.g. `German::Vocabulary` or `Chinese::Radicals`)
 
 ## Code
 

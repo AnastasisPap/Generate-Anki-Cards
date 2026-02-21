@@ -2,25 +2,20 @@
 Deck management module.
 
 This module handles the creation and management of Anki decks,
-including the hierarchical deck structure for vocabulary chapters and grammar.
+including the hierarchical deck structure for vocabulary chapters and Q&A decks.
 """
 
 import genanki
 from typing import Dict, List
 from .config import LanguageConfig
-from .models import (
-    create_native_to_translation_model,
-    create_translation_to_native_model,
-    create_grammar_model
-)
+from .models import create_qa_model
 
 
 class DeckManager:
     """Manages Anki decks for a specific language configuration.
     
     This class handles:
-    - Creating vocabulary chapter decks (e.g., German::Vocabulary::ChapterA)
-    - Creating grammar decks (e.g., German::Grammar)
+    - Creating Q&A decks (e.g., German::Vocabulary, Chinese::Radicals)
     - Adding notes to decks
     - Exporting all decks to an .apkg file
     """
@@ -32,13 +27,12 @@ class DeckManager:
             config: The language configuration to use.
         """
         self.config = config
-        self._vocabulary_decks: Dict[str, genanki.Deck] = {}
-        self._grammar_deck: genanki.Deck | None = None
+        self._qa_decks: Dict[str, genanki.Deck] = {}
         
-        # Create models
-        self._native_to_translation_model = create_native_to_translation_model(config)
-        self._translation_to_native_model = create_translation_to_native_model(config)
-        self._grammar_model = create_grammar_model(config)
+        # Create Q&A models for each deck type
+        self._qa_models: Dict[str, genanki.Model] = {}
+        for dt in config.deck_types:
+            self._qa_models[dt] = create_qa_model(config, dt)
     
     def _generate_deck_id(self, deck_name: str) -> int:
         """Generate a consistent deck ID from the deck name.
@@ -51,99 +45,50 @@ class DeckManager:
         """
         return abs(hash(deck_name)) % (1 << 30) + (1 << 30)
     
-    def create_vocabulary_chapter(self, chapter_name: str) -> genanki.Deck:
-        """Create a vocabulary chapter deck.
+    
+    def create_qa_deck(self, deck_type: str) -> genanki.Deck:
+        """Create a Q&A deck for the given type (e.g., Grammar, Radicals).
         
         Args:
-            chapter_name: The name of the chapter (e.g., "ChapterA").
-            
-        Returns:
-            The created or existing deck for this chapter.
-        """
-        if chapter_name in self._vocabulary_decks:
-            return self._vocabulary_decks[chapter_name]
-        
-        deck_name = f"{self.config.vocabulary_deck_name}::{chapter_name}"
-        deck_id = self._generate_deck_id(deck_name)
-        
-        deck = genanki.Deck(deck_id, deck_name)
-        self._vocabulary_decks[chapter_name] = deck
-        
-        return deck
-    
-    def create_grammar_deck(self) -> genanki.Deck:
-        """Create the grammar deck.
+            deck_type: The deck type name (e.g., "Grammar", "Radicals").
         
         Returns:
-            The created or existing grammar deck.
+            The created or existing deck for this type.
         """
-        if self._grammar_deck is not None:
-            return self._grammar_deck
+        if deck_type in self._qa_decks:
+            return self._qa_decks[deck_type]
         
-        deck_name = self.config.grammar_deck_name
+        deck_name = self.config.qa_deck_name(deck_type)
         deck_id = self._generate_deck_id(deck_name)
         
-        self._grammar_deck = genanki.Deck(deck_id, deck_name)
+        self._qa_decks[deck_type] = genanki.Deck(deck_id, deck_name)
         
-        return self._grammar_deck
+        return self._qa_decks[deck_type]
     
-    def add_vocabulary_card(
-        self,
-        chapter_name: str,
-        native_word: str,
-        translated_word: str,
-        native_sentence: str,
-        translated_sentence: str
-    ) -> None:
-        """Add vocabulary cards to a chapter deck.
-        
-        This creates two cards:
-        1. Native → Translation (e.g., German → English)
-        2. Translation → Native (e.g., English → German)
+    
+    def add_qa_card(self, deck_type: str, question: str, answer: str) -> None:
+        """Add a Q&A card to a specific deck type.
         
         Args:
-            chapter_name: The chapter to add the card to.
-            native_word: The word in the native language (e.g., German).
-            translated_word: The translation of the word (e.g., English).
-            native_sentence: A sentence using the word in the native language.
-            translated_sentence: The translation of the sentence.
+            deck_type: The deck type name (e.g., "Grammar", "Radicals").
+            question: The question or prompt.
+            answer: The answer.
         """
-        # Ensure the chapter deck exists
-        if chapter_name not in self._vocabulary_decks:
-            self.create_vocabulary_chapter(chapter_name)
+        # Ensure the deck exists
+        if deck_type not in self._qa_decks:
+            self.create_qa_deck(deck_type)
         
-        deck = self._vocabulary_decks[chapter_name]
-        
-        # Create Native → Translation note
-        native_to_translation_note = genanki.Note(
-            model=self._native_to_translation_model,
-            fields=[native_word, native_sentence, translated_word, translated_sentence]
-        )
-        deck.add_note(native_to_translation_note)
-        
-        # Create Translation → Native note
-        translation_to_native_note = genanki.Note(
-            model=self._translation_to_native_model,
-            fields=[translated_word, native_word]
-        )
-        deck.add_note(translation_to_native_note)
-    
-    def add_grammar_card(self, question: str, answer: str) -> None:
-        """Add a grammar card to the grammar deck.
-        
-        Args:
-            question: The grammar question.
-            answer: The answer to the question.
-        """
-        # Ensure the grammar deck exists
-        if self._grammar_deck is None:
-            self.create_grammar_deck()
+        model = self._qa_models.get(deck_type)
+        if model is None:
+            # Create model on the fly for dynamically added types
+            model = create_qa_model(self.config, deck_type)
+            self._qa_models[deck_type] = model
         
         note = genanki.Note(
-            model=self._grammar_model,
+            model=model,
             fields=[question, answer]
         )
-        self._grammar_deck.add_note(note)
+        self._qa_decks[deck_type].add_note(note)
     
     def get_all_decks(self) -> List[genanki.Deck]:
         """Get all decks managed by this manager.
@@ -151,10 +96,7 @@ class DeckManager:
         Returns:
             A list of all decks.
         """
-        decks = list(self._vocabulary_decks.values())
-        if self._grammar_deck is not None:
-            decks.append(self._grammar_deck)
-        return decks
+        return list(self._qa_decks.values())
     
     def export(self, filename: str) -> None:
         """Export all decks to an .apkg file.

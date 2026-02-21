@@ -59,120 +59,31 @@ hr#answer {
 """
 
 
-def create_native_to_translation_model(config: LanguageConfig) -> genanki.Model:
-    """Create a model for native language → translation language cards.
-    
-    For German→English:
-    - Front: German word + German sentence (with TTS for sentence)
-    - Back: English word + English sentence translation
-    
-    Args:
-        config: The language configuration to use.
-        
-    Returns:
-        A genanki Model configured for native→translation cards.
-    """
-    # Generate a unique model ID based on language name
-    # Using a hash to ensure consistency across runs
-    # Added _v3 suffix to force Anki to update the styling
-    model_id = abs(hash(f"{config.name}_to_{config.translation_language}_vocab_v3")) % (1 << 30) + (1 << 30)
-    
-    return genanki.Model(
-        model_id,
-        f'{config.name} → {config.translation_language} Vocabulary',
-        fields=[
-            {'name': 'NativeWord'},      # e.g., German word
-            {'name': 'NativeSentence'},  # e.g., German sentence
-            {'name': 'TranslatedWord'},  # e.g., English word
-            {'name': 'TranslatedSentence'},  # e.g., English sentence
-        ],
-        templates=[
-            {
-                'name': f'{config.name} → {config.translation_language}',
-                'qfmt': f'''
-                    <div class="word">{{{{NativeWord}}}}</div>
-                    <div class="sentence">{{{{tts {config.native_code}:NativeSentence}}}}</div>
-                    <div class="sentence">{{{{NativeSentence}}}}</div>
-                ''',
-                'afmt': '''
-                    {{FrontSide}}
-                    <hr id="answer">
-                    <div class="translation">{{TranslatedWord}}</div>
-                    <div class="sentence-translation">{{TranslatedSentence}}</div>
-                ''',
-            },
-        ],
-        css=CARD_CSS
-    )
-
-
-def create_translation_to_native_model(config: LanguageConfig) -> genanki.Model:
-    """Create a model for translation language → native language cards.
-    
-    For English→German:
-    - Front: English word
-    - Back: German word
-    
-    Args:
-        config: The language configuration to use.
-        
-    Returns:
-        A genanki Model configured for translation→native cards.
-    """
-    # Generate a unique model ID based on language name
-    # Added _v3 suffix to force Anki to update the styling
-    model_id = abs(hash(f"{config.translation_language}_to_{config.name}_vocab_v3")) % (1 << 30) + (1 << 30)
-    
-    return genanki.Model(
-        model_id,
-        f'{config.translation_language} → {config.name} Vocabulary',
-        fields=[
-            {'name': 'TranslatedWord'},  # e.g., English word
-            {'name': 'NativeWord'},      # e.g., German word
-        ],
-        templates=[
-            {
-                'name': f'{config.translation_language} → {config.name}',
-                'qfmt': '''
-                    <div class="word">{{TranslatedWord}}</div>
-                ''',
-                'afmt': '''
-                    {{FrontSide}}
-                    <hr id="answer">
-                    <div class="translation">{{NativeWord}}</div>
-                ''',
-            },
-        ],
-        css=CARD_CSS
-    )
-
-
-def create_grammar_model(config: LanguageConfig) -> genanki.Model:
-    """Create a model for grammar cards.
+def create_qa_model(config: LanguageConfig, deck_type_name: str) -> genanki.Model:
+    """Create a model for Q&A cards (Grammar, Radicals, etc.).
     
     - Front: Question
     - Back: Answer
     
     Args:
         config: The language configuration to use.
+        deck_type_name: The deck type name (e.g., "Grammar", "Radicals").
         
     Returns:
-        A genanki Model configured for grammar cards.
+        A genanki Model configured for Q&A cards.
     """
-    # Generate a unique model ID based on language name
-    # Added _v3 suffix to force Anki to update the styling
-    model_id = abs(hash(f"{config.name}_grammar_v3")) % (1 << 30) + (1 << 30)
+    model_id = abs(hash(f"{config.name}_{deck_type_name.lower()}_v3")) % (1 << 30) + (1 << 30)
     
     return genanki.Model(
         model_id,
-        f'{config.name} Grammar',
+        f'{config.name} {deck_type_name}',
         fields=[
             {'name': 'Question'},
             {'name': 'Answer'},
         ],
         templates=[
             {
-                'name': 'Grammar Card',
+                'name': f'{deck_type_name} Card',
                 'qfmt': '''
                     <div class="word">{{Question}}</div>
                 ''',

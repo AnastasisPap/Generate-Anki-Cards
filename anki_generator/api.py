@@ -37,64 +37,26 @@ class AnkiGenerator:
         self.config = config
         self._deck_manager = DeckManager(config)
     
-    def create_vocabulary_chapter(self, chapter_name: str) -> None:
-        """Create a vocabulary chapter deck.
+    def create_qa_deck(self, deck_type: str) -> None:
+        """Create a Q&A deck.
         
-        Creates a deck with the structure: {Language}::Vocabulary::{chapter_name}
-        For example: German::Vocabulary::ChapterA
-        
-        Args:
-            chapter_name: The name of the chapter (e.g., "ChapterA", "ChapterB").
-        """
-        self._deck_manager.create_vocabulary_chapter(chapter_name)
-    
-    def create_grammar_deck(self) -> None:
-        """Create the grammar deck.
-        
-        Creates a deck with the structure: {Language}::Grammar
-        For example: German::Grammar
-        """
-        self._deck_manager.create_grammar_deck()
-    
-    def add_vocabulary_card(
-        self,
-        chapter: str,
-        word: str,
-        word_translation: str,
-        sentence: str,
-        sentence_translation: str
-    ) -> None:
-        """Add a vocabulary card to a chapter.
-        
-        This creates two cards automatically:
-        1. Native → Translation: Shows the native word and sentence on front,
-           translations on back. TTS is enabled for the native sentence.
-        2. Translation → Native: Shows the translated word on front,
-           native word on back.
+        Creates a deck with the structure: {Language}::{DeckType}
+        For example: German::Grammar or Chinese::Radicals
         
         Args:
-            chapter: The chapter name to add the card to.
-            word: The word in the native language (e.g., German word).
-            word_translation: The translation of the word (e.g., English translation).
-            sentence: A sentence using the word in the native language.
-            sentence_translation: The translation of the sentence.
+            deck_type: The deck type name (e.g., "Grammar", "Radicals").
         """
-        self._deck_manager.add_vocabulary_card(
-            chapter_name=chapter,
-            native_word=word,
-            translated_word=word_translation,
-            native_sentence=sentence,
-            translated_sentence=sentence_translation
-        )
-    
-    def add_grammar_card(self, question: str, answer: str) -> None:
-        """Add a grammar card to the grammar deck.
+        self._deck_manager.create_qa_deck(deck_type)
+
+    def add_qa_card(self, deck_type: str, question: str, answer: str) -> None:
+        """Add a Q&A card to a specific deck type.
         
         Args:
-            question: The grammar question or prompt.
-            answer: The answer to the question.
+            deck_type: The deck type name (e.g., "Grammar", "Radicals").
+            question: The question or prompt.
+            answer: The answer.
         """
-        self._deck_manager.add_grammar_card(question, answer)
+        self._deck_manager.add_qa_card(deck_type, question, answer)
     
     def export(self, filename: str = "output.apkg") -> str:
         """Export all decks to an Anki package file.

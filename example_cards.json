@@ -1,25 +1,16 @@
 {
     "vocabulary": [
         {
-            "chapter": "Body Parts",
-            "word": "der Kopf",
-            "word_translation": "head",
-            "sentence": "Mein Kopf tut weh.",
-            "sentence_translation": "My head hurts."
+            "question": "der Kopf",
+            "answer": "head\n\nMein Kopf tut weh.\nMy head hurts."
         },
         {
-            "chapter": "Body Parts",
-            "word": "die Hand",
-            "word_translation": "hand",
-            "sentence": "Ich wasche meine Hände.",
-            "sentence_translation": "I wash my hands."
+            "question": "die Hand",
+            "answer": "hand\n\nIch wasche meine Hände.\nI wash my hands."
         },
         {
-            "chapter": "Food and Drinks",
-            "word": "das Brot",
-            "word_translation": "bread",
-            "sentence": "Ich esse Brot zum Frühstück.",
-            "sentence_translation": "I eat bread for breakfast."
+            "question": "das Brot",
+            "answer": "bread\n\nIch esse Brot zum Frühstück.\nI eat bread for breakfast."
         }
     ],
     "grammar": [
