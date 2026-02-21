@@ -117,12 +117,16 @@ class PDFCardGenerator:
             deck_type = content_type.title()
         result = self._handle_qa_type(deck_type, pdf_bytes, verbose, template=template)
         
-        # Step 5: Determine export path if default, and Export
+        # Step 5: Determine export path
+        output_dir = Path("generated_cards") / self._config.name / deck_type.lower()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
         if self._is_default_output:
-            output_dir = Path(self._config.name) / deck_type.lower()
-            output_dir.mkdir(parents=True, exist_ok=True)
             self.output_file = str(output_dir / f"{self._config.name}_{deck_type}.apkg")
-            
+        else:
+            out_path = Path(self.output_file)
+            if str(out_path.parent) == ".":
+                self.output_file = str(output_dir / self.output_file)
         if verbose:
             print(f"💾 Exporting to {self.output_file}...")
         

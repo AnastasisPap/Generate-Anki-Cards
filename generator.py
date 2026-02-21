@@ -130,17 +130,25 @@ class CardGenerator:
                 cards_processed = self._process_qa_from_json(deck_type, cards_list, verbose)
                 deck_counts[deck_type] = cards_processed
         
-        # Determine export path if not manually specified
+        # Determine export path
+        if len(deck_counts) == 1:
+            deck_type_for_path = list(deck_counts.keys())[0]
+            output_dir = Path("generated_cards") / self._config.name / deck_type_for_path.lower()
+        else:
+            deck_type_for_path = None
+            output_dir = Path("generated_cards") / self._config.name
+            
+        output_dir.mkdir(parents=True, exist_ok=True)
+
         if self._is_default_output:
-            if len(deck_counts) == 1:
-                deck_type_for_path = list(deck_counts.keys())[0]
-                output_dir = Path(self._config.name) / deck_type_for_path.lower()
-                output_dir.mkdir(parents=True, exist_ok=True)
+            if deck_type_for_path:
                 self.output_file = str(output_dir / f"{self._config.name}_{deck_type_for_path}.apkg")
-            elif len(deck_counts) > 1:
-                output_dir = Path(self._config.name)
-                output_dir.mkdir(parents=True, exist_ok=True)
+            else:
                 self.output_file = str(output_dir / f"{self._config.name}_learning_deck.apkg")
+        else:
+            out_path = Path(self.output_file)
+            if str(out_path.parent) == ".":
+                self.output_file = str(output_dir / self.output_file)
 
         # Export
         if verbose:
@@ -429,12 +437,16 @@ class CardGenerator:
             deck_type = content_type.title()
         result = self._handle_qa_type(deck_type, pdf_bytes, verbose, template=template)
         
-        # Step 5: Determine export path if default, and Export
+        # Step 5: Determine export path
+        output_dir = Path("generated_cards") / self._config.name / deck_type.lower()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
         if self._is_default_output:
-            output_dir = Path(self._config.name) / deck_type.lower()
-            output_dir.mkdir(parents=True, exist_ok=True)
             self.output_file = str(output_dir / f"{self._config.name}_{deck_type}.apkg")
-            
+        else:
+            out_path = Path(self.output_file)
+            if str(out_path.parent) == ".":
+                self.output_file = str(output_dir / self.output_file)
         if verbose:
             print(f"💾 Exporting to {self.output_file}...")
         
